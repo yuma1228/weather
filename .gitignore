@@ -1,0 +1,32 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- 仮想環境 ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- IDE / エディタ ----
+.vscode/
+.idea/
+*.swp
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ---- 生成される観測データ(スクリプト実行で再取得できるためコミットしない) ----
+# 共有したい場合はこの2行をコメントアウトしてください
+data/observations.csv
+data/stations.csv
+
+ data/*.csv
