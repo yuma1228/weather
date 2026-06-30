@@ -1,35 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-data/observations.csv と data/stations.csv を読み込み、FastAPI(JSON)で配信するサーバー。
-
-client.py から「擬似リアルタイム」処理ができるよう、ある時刻の全地点スナップショット
-を返す /at を中心に据えている(クライアントは時刻を1つずつ進めながら処理すればよい)。
-
-起動:
-    pip install fastapi uvicorn
-    python server.py                 # http://127.0.0.1:8000  (ドキュメント: /docs)
-    # または: uvicorn server:app --reload
-
-「リアルタイム感」のしくみ:
-    サーバー起動の瞬間に“仮想時計”がスタートし、STEP_INTERVAL_SEC 秒ごとに
-    データの時刻が1時間進む。/now を叩くと「今の仮想時刻」とそのスナップショット
-    が返る。間隔は下の STEP_INTERVAL_SEC を変えるだけで調整できる(既定: 5秒で1時間)。
-
-エンドポイント:
-    GET /now                               … ★今の仮想時刻の全地点スナップショット
-    GET /clock                             … 今の仮想時刻だけ(軽量・観測値なし)
-    GET /stations[?type=官署|アメダス]      … 地点マスタ(緯度経度付き)
-    GET /times                             … 利用可能な時刻の一覧(昇順)
-    GET /at?t=YYYY-MM-DD HH:MM:SS           … 指定時刻の全地点スナップショット(緯度経度付き)
-            [&station_id=s47662]           …   特定地点のみに絞る
-    GET /observations?station_id=s47662     … 1地点の時系列
-            [&start=...&end=...&limit=N]    …   期間・件数で絞る
-    GET /latest[?station_id=s47662]         … 各地点(または指定地点)の最新時刻の値
-"""
-
 import csv
 import time
-from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,8 +12,6 @@ START_INDEX = 0
 
 
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
-
 NUMERIC_FIELDS = {
     "temp", "precip", "humidity", "solar", "sunshine",
     "wind_speed", "vapor_pressure", "dew_point",
@@ -53,15 +21,13 @@ STATION_NUMERIC = {"lat", "lon", "elev"}
 
 
 class WeatherData:
-    """CSVをメモリに読み込み、時刻・地点で索引する。"""
-
-    def __init__(self, data_dir: Path):
+    def __init__(self):
         self.stations = []
         self.station_by_id = {}
         self.obs_by_time = {}
         self.obs_by_station = {}
         self.times = []
-        self._load(data_dir)
+        self._load()
 
     @staticmethod
     def _num(v):
@@ -72,15 +38,9 @@ class WeatherData:
         except ValueError:
             return None
 
-    def _load(self, data_dir: Path):
-        st_path = data_dir / "stations.csv"
-        obs_path = data_dir / "observations.csv"
-        if not st_path.exists() or not obs_path.exists():
-            raise FileNotFoundError(
-                f"CSVが見つかりません: {st_path} / {obs_path}\n"
-                f"先に data/data_get_script.py を実行してください。"
-            )
-
+    def _load(self):
+        st_path = "data/stations.csv"
+        obs_path = "data/observations.csv"
         with open(st_path, encoding="utf-8-sig", newline="") as f:
             for row in csv.DictReader(f):
                 for k in STATION_NUMERIC:
@@ -125,17 +85,15 @@ class WeatherData:
 
 
 class VirtualClock:
-    """サーバー起動時刻を基準に、データの時刻(1時間刻み)を進める仮想時計。"""
 
     def __init__(self, times, step_interval_sec, loop, start_index):
         self.times = times
         self.step_interval_sec = step_interval_sec
         self.loop = loop
         self.start_index = max(0, min(start_index, len(times) - 1)) if times else 0
-        self.t0 = time.monotonic()  # 起動した瞬間(基準点)
+        self.t0 = time.monotonic()
 
     def index(self):
-        """今の仮想時刻が、時刻一覧の何番目か。"""
         elapsed = time.monotonic() - self.t0
         steps = int(elapsed // self.step_interval_sec)
         i = self.start_index + steps
@@ -164,7 +122,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
-data = WeatherData(DATA_DIR)
+data = WeatherData()
 clock = VirtualClock(data.times, STEP_INTERVAL_SEC, LOOP, START_INDEX)
 
 
@@ -172,13 +130,13 @@ clock = VirtualClock(data.times, STEP_INTERVAL_SEC, LOOP, START_INDEX)
 def index():
     return {
         "endpoints": {
-            "/now": "★今の仮想時刻の全地点スナップショット(&station_idで絞込)",
-            "/clock": "今の仮想時刻だけ(軽量)",
-            "/stations": "地点マスタ(?type=官署|アメダス)",
+            "/now": "今の仮想時刻の全地点スナップショット",
+            "/clock": "今の仮想時刻だけ",
+            "/stations": "地点マスタ",
             "/times": "時刻一覧",
-            "/at": "?t=時刻 で全地点スナップショット(&station_idで絞込)",
-            "/observations": "?station_id= の時系列(&start=&end=&limit=)",
-            "/latest": "各地点(?station_id=)の最新値",
+            "/at": "?t=時刻 で全地点スナップショット",
+            "/observations": "?station_id= の時系列",
+            "/latest": "各地点の最新値",
             "/docs": "Swagger UI",
         },
         "station_count": len(data.stations),
@@ -189,13 +147,11 @@ def index():
 
 @app.get("/clock")
 def get_clock():
-    """今の仮想時刻だけを返す(観測値なし・軽量)。"""
     return clock.state()
 
 
 @app.get("/now")
 def get_now(station_id: Optional[str] = Query(None)):
-    """今の仮想時刻における全地点のスナップショット。アクセスのたびに時刻が進む。"""
     st = clock.state()
     t = st["datetime"]
     snap = data.snapshot(t, station_id) if t else []
@@ -263,4 +219,4 @@ def get_latest(station_id: Optional[str] = Query(None)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)
