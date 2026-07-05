@@ -5,9 +5,13 @@ import time
 import datetime as dt
 
 import requests
+import urllib3
+
+# verify=False 時の警告を抑制(TLS傍受環境のため無検証で運用)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 START_DATE = dt.date(2025, 8, 1)
-END_DATE   = dt.date(2025, 8, 15)
+END_DATE   = dt.date(2025, 9, 15)
 
 
 #   "kansho" … 気象官署
@@ -58,6 +62,8 @@ DATE_RE = re.compile(r"^\d{4}/\d{1,2}/\d{1,2}")
 def open_session():
     sess = requests.Session()
     sess.headers.update({"User-Agent": UA, "Referer": INDEX_URL})
+    # 社内プロキシのTLS傍受で証明書検証が失敗するため無検証にする
+    sess.verify = False
     sess.get(INDEX_URL, timeout=30).raise_for_status()
     return sess
 

@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-slate-900 text-slate-200;
+    font-family: system-ui, "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo",
+      sans-serif;
+  }
+}
+
+/* Leaflet 固有の調整(Tailwind の utility では扱いにくい部分だけ残す) */
+.leaflet-container {
+  height: 100%;
+  background: #0b1220;
+}
+
+/* Tailwind の preflight が img { max-width:100% } を当てると
+   Leaflet のタイル/マーカー画像が崩れるため打ち消す */
+.leaflet-container img {
+  max-width: none !important;
+}

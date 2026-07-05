@@ -23,10 +23,22 @@ ENV/
 Thumbs.db
 desktop.ini
 
+# ---- Node / Next.js (frontend) ----
+node_modules/
+.next/
+out/
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---- 環境変数 ----
+.env
+.env*.local
+
 
 # ---- 生成される観測データ(スクリプト実行で再取得できるためコミットしない) ----
-# 共有したい場合はこの2行をコメントアウトしてください
-data/observations.csv
-data/stations.csv
-
- data/*.csv
+# 官署・アメダス両方(observations*.csv / stations*.csv)を対象にする
+backend/data/*.csv

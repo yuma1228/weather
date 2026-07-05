@@ -1,15 +1,11 @@
 import csv
+import glob
 import time
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-
-
-STEP_INTERVAL_SEC = 5.0
-LOOP = True
-START_INDEX = 0
-
+import config
 
 
 NUMERIC_FIELDS = {
@@ -39,27 +35,28 @@ class WeatherData:
             return None
 
     def _load(self):
-        st_path = "data/stations.csv"
-        obs_path = "data/observations.csv"
-        with open(st_path, encoding="utf-8-sig", newline="") as f:
-            for row in csv.DictReader(f):
-                for k in STATION_NUMERIC:
-                    if k in row:
-                        row[k] = self._num(row[k])
-                self.stations.append(row)
-                self.station_by_id[row["station_id"]] = row
+        # 官署+アメダスなど複数ファイルをまとめて読む
+        for st_path in sorted(glob.glob(config.STATIONS_GLOB)):
+            with open(st_path, encoding="utf-8-sig", newline="") as f:
+                for row in csv.DictReader(f):
+                    for k in STATION_NUMERIC:
+                        if k in row:
+                            row[k] = self._num(row[k])
+                    self.stations.append(row)
+                    self.station_by_id[row["station_id"]] = row
 
-        with open(obs_path, encoding="utf-8-sig", newline="") as f:
-            for row in csv.DictReader(f):
-                for k in NUMERIC_FIELDS:
-                    if k in row:
-                        row[k] = self._num(row[k])
-                for k in ("wind_dir", "cloud"):
-                    if row.get(k) == "":
-                        row[k] = None
-                t = row["datetime"]
-                self.obs_by_time.setdefault(t, []).append(row)
-                self.obs_by_station.setdefault(row["station_id"], []).append(row)
+        for obs_path in sorted(glob.glob(config.OBSERVATIONS_GLOB)):
+            with open(obs_path, encoding="utf-8-sig", newline="") as f:
+                for row in csv.DictReader(f):
+                    for k in NUMERIC_FIELDS:
+                        if k in row:
+                            row[k] = self._num(row[k])
+                    for k in ("wind_dir", "cloud"):
+                        if row.get(k) == "":
+                            row[k] = None
+                    t = row["datetime"]
+                    self.obs_by_time.setdefault(t, []).append(row)
+                    self.obs_by_station.setdefault(row["station_id"], []).append(row)
 
         self.times = sorted(self.obs_by_time.keys())
         for sid in self.obs_by_station:
@@ -123,7 +120,9 @@ app.add_middleware(
 )
 
 data = WeatherData()
-clock = VirtualClock(data.times, STEP_INTERVAL_SEC, LOOP, START_INDEX)
+clock = VirtualClock(
+    data.times, config.STEP_INTERVAL_SEC, config.LOOP, config.START_INDEX,
+)
 
 
 @app.get("/")
@@ -219,4 +218,4 @@ def get_latest(station_id: Optional[str] = Query(None)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host=config.SERVER_HOST, port=config.SERVER_PORT)
