@@ -1,7 +1,9 @@
 "use client";
 
+import type { WeatherPayload } from "../../lib/types";
+
 // 現在の仮想時刻と進捗(何番目 / 全体)を表示する。両ページ共通。
-export default function Clock({ payload }) {
+export default function Clock({ payload }: { payload: WeatherPayload | null }) {
   return (
     <div>
       <div className="text-lg font-semibold tabular-nums">

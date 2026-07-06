@@ -16,22 +16,6 @@ import config
 SOURCE = config.SOURCE
 POLL_INTERVAL_SEC = config.POLL_INTERVAL_SEC
 
-
-# ---------------------------------------------------------------------------
-# WBGT(暑さ指数)の推定
-#
-# 屋外WBGTの実測には黒球温度が要るが、ここでは気象官署が観測する
-# 気温・相対湿度・全天日射量・平均風速から推定する小野・登内(2014)の回帰式:
-#
-#   WBGT = 0.735*Ta + 0.0374*RH + 0.00292*Ta*RH
-#          + 7.619*SR - 4.557*SR**2 - 0.0572*WS - 4.064
-#
-#   Ta: 気温[℃] / RH: 相対湿度[%] / SR: 全天日射量[kW/m^2] / WS: 平均風速[m/s]
-#
-# obsdl の時別値は日射量が「1時間積算[MJ/m^2]」なので kW/m^2 へ換算する。
-# ---------------------------------------------------------------------------
-
-# 環境省「熱中症予防情報サイト」の指針に沿った区分
 RISK_LEVELS = [
     (31.0, "danger",  "危険"),
     (28.0, "severe",  "厳重警戒"),
@@ -140,7 +124,6 @@ class Poller:
                         self._payload = payload
                         self._version += 1
             except Exception as ex:
-                # server 未起動などは黙ってリトライ
                 print(f"[poller] {ex}")
             time.sleep(POLL_INTERVAL_SEC)
 
@@ -197,7 +180,7 @@ async def stream():
             if payload is not None and version != last_version:
                 last_version = version
                 yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(config.STREAM_CHECK_SEC)
 
     return StreamingResponse(
         gen(),

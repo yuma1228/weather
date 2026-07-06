@@ -1,16 +1,22 @@
 "use client";
 
 import Clock from "../common/Clock";
-import ConnectionBadge from "../common/ConnectionBadge";
 import RainLegend from "./RainLegend";
 import { isRaining } from "../../lib/rain";
+import type { Observation, WeatherPayload } from "../../lib/types";
+
+interface Props {
+  payload: WeatherPayload | null;
+  connected: boolean;
+}
 
 // 雨ページ上部のバー: タイトル・時刻・降水中地点数/最大雨量・凡例・接続状態。
-export default function RainHeader({ payload, connected }) {
+export default function RainHeader({ payload, connected }: Props) {
   const obs = payload?.observations ?? [];
   const raining = obs.filter((o) => isRaining(o.precip));
-  const heaviest = raining.reduce(
-    (max, o) => (max == null || o.precip > max.precip ? o : max),
+  const heaviest = raining.reduce<Observation | null>(
+    (max, o) =>
+      max == null || (o.precip ?? 0) > (max.precip ?? 0) ? o : max,
     null
   );
 
@@ -32,7 +38,6 @@ export default function RainHeader({ payload, connected }) {
       </div>
 
       <RainLegend />
-      <ConnectionBadge connected={connected} />
     </div>
   );
 }
