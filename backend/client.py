@@ -16,17 +16,22 @@ import config
 SOURCE = config.SOURCE
 POLL_INTERVAL_SEC = config.POLL_INTERVAL_SEC
 
-RISK_LEVELS = [
-    (31.0, "danger",  "危険"),
-    (28.0, "severe",  "厳重警戒"),
-    (25.0, "warning", "警戒"),
-    (21.0, "caution", "注意"),
-    (float("-inf"), "safe", "ほぼ安全"),
+WBGT_LEVEL = [
+    (31.0, "danger"),
+    (28.0, "severe"),
+    (25.0, "warning"),
+    (21.0, "caution"),
+    (float("-inf"), "safe"),
 ]
 
 
-def compute_wbgt(temp, humidity, solar, wind_speed):
-    """要素から推定WBGT[℃]を返す。必須要素が欠けていれば None。"""
+
+def compute_wbgt(
+    temp: float | None,
+    humidity: float | None,
+    solar: float | None,
+    wind_speed: float | None,
+) -> float | None:
     if temp is None or humidity is None or solar is None:
         return None
     ta = temp
@@ -45,40 +50,33 @@ def compute_wbgt(temp, humidity, solar, wind_speed):
     return round(wbgt, 1)
 
 
-def risk_of(wbgt):
-    """WBGT値から (level_key, label) を返す。None は ("unknown", "―")。"""
+def risk_of(wbgt: float | None) -> str:
     if wbgt is None:
-        return "unknown", "―"
-    for threshold, key, label in RISK_LEVELS:
+        return "unknown"
+    for threshold, key in WBGT_LEVEL:
         if wbgt >= threshold:
-            return key, label
-    return "unknown", "―"
+            return key
+    return "unknown"
 
 
-def annotate(obs):
-    """観測レコードに wbgt / risk_level / risk_label を付与して返す。"""
+def annotate(obs: dict) -> dict:
     wbgt = compute_wbgt(
         obs.get("temp"), obs.get("humidity"),
         obs.get("solar"), obs.get("wind_speed"),
     )
-    level, label = risk_of(wbgt)
-    return {**obs, "wbgt": wbgt, "risk_level": level, "risk_label": label}
+    return {**obs, "wbgt": wbgt, "risk_level": risk_of(wbgt)}
 
 
-def process(snapshot):
-    """server の /now レスポンスを受け取り、各観測に WBGT を付けて返す。
-
-    併せてこの時刻の統計(最大WBGT地点・危険度別カウント)も付ける。
-    """
+def process(snapshot: dict) -> dict:
     obs = [annotate(o) for o in snapshot.get("observations", [])]
 
-    counts = {key: 0 for _, key, _ in RISK_LEVELS}
-    counts["unknown"] = 0
+    risk_counts = {key: 0 for _, key in WBGT_LEVEL}
+    risk_counts["unknown"] = 0
     hottest = None
     wettest = None
     raining_count = 0
     for o in obs:
-        counts[o["risk_level"]] = counts.get(o["risk_level"], 0) + 1
+        risk_counts[o["risk_level"]] = risk_counts.get(o["risk_level"], 0) + 1
         w = o.get("wbgt")
         if w is not None and (hottest is None or w > hottest["wbgt"]):
             hottest = o
@@ -95,12 +93,12 @@ def process(snapshot):
         "total": snapshot.get("total"),
         "step_interval_sec": snapshot.get("step_interval_sec"),
         "count": len(obs),
-        "risk_counts": counts,
+        "risk_counts": risk_counts,
         "hottest": {
             "station_id": hottest["station_id"],
             "name": hottest["name"],
             "wbgt": hottest["wbgt"],
-            "risk_label": hottest["risk_label"],
+            "risk_level": hottest["risk_level"],
         } if hottest else None,
         "raining_count": raining_count,
         "wettest": {
@@ -112,20 +110,16 @@ def process(snapshot):
     }
 
 
-# ---------------------------------------------------------------------------
-# server をポーリングして最新の加工済みスナップショットを保持する
-# ---------------------------------------------------------------------------
-
 class Poller:
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._payload = None      # 最新の加工済みスナップショット
-        self._version = 0         # index が変わるたびに増える
+        self._payload: dict | None = None
+        self._version = 0
         self._alive = True
         self._sess = requests.Session()
         self._sess.trust_env = False
 
-    def run(self):
+    def run(self) -> None:
         last_index = None
         while self._alive:
             try:
@@ -141,7 +135,7 @@ class Poller:
                 print(f"[poller] {ex}")
             time.sleep(POLL_INTERVAL_SEC)
 
-    def snapshot(self):
+    def snapshot(self) -> tuple[dict | None, int]:
         with self._lock:
             return self._payload, self._version
 

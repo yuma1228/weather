@@ -3,6 +3,7 @@
 import { CircleMarker, Popup } from "react-leaflet";
 import { rainColor, isRaining } from "../../lib/rain";
 import { fmt } from "../../lib/format";
+import { hasCoords } from "../../lib/obs";
 import type { Observation } from "../../lib/types";
 
 // ポップアップ内の1行(項目名 + 値)。
@@ -15,15 +16,12 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-// 全地点の観測を降水量で表示。雨の地点は強度で色分け&大きく、無降水は小さな灰点。
 export default function RainMarkers({
   observations = [],
 }: {
   observations?: Observation[];
 }) {
-  const plottable = observations.filter(
-    (o) => o != null && o.lat != null && o.lon != null
-  );
+  const plottable = observations.filter(hasCoords);
 
   return (
     <>
@@ -33,7 +31,7 @@ export default function RainMarkers({
         return (
           <CircleMarker
             key={o.station_id}
-            center={[o.lat as number, o.lon as number]}
+            center={[o.lat, o.lon]}
             radius={4}
             pathOptions={{
               color: "#0b1220",
@@ -54,9 +52,7 @@ export default function RainMarkers({
                 {raining ? "" : "(降水なし)"}
                 <table className="mt-1 border-collapse text-xs">
                   <tbody>
-                    <Row label="気温" value={fmt(o.temp, "℃")} />
-                    <Row label="湿度" value={fmt(o.humidity, "%")} />
-                    <Row label="風速" value={fmt(o.wind_speed, "m/s")} />
+                    <Row label="降水" value={fmt(o.precip, "mm")} />
                   </tbody>
                 </table>
               </div>

@@ -26,14 +26,13 @@ export interface Observation {
   type?: string;
   wbgt: number | null;
   risk_level: RiskLevel;
-  risk_label: string;
 }
 
 export interface Hottest {
   station_id: string;
   name: string;
   wbgt: number | null;
-  risk_label: string;
+  risk_level: RiskLevel;
 }
 
 export interface Wettest {

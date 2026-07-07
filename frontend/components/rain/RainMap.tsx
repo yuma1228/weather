@@ -1,7 +1,7 @@
 "use client";
 
 import BaseMap from "../common/BaseMap";
-import { useWeatherStream } from "../../lib/hooks/useWeatherStream";
+import { useWeatherStream } from "../../hooks/useWeatherStream";
 import RainHeader from "./RainHeader";
 import RainMarkers from "./RainMarkers";
 
