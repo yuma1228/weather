@@ -26,7 +26,7 @@ class WeatherData:
         self._load()
 
     @staticmethod
-    def _num(v):
+    def _num(v: str | None) -> float | None:
         if v is None or v == "":
             return None
         try:
@@ -62,14 +62,14 @@ class WeatherData:
         for sid in self.obs_by_station:
             self.obs_by_station[sid].sort(key=lambda r: r["datetime"])
 
-    def station_meta(self, sid):
+    def station_meta(self, sid: str) -> dict:
         s = self.station_by_id.get(sid)
         if not s:
             return {}
         return {"lat": s.get("lat"), "lon": s.get("lon"),
                 "elev": s.get("elev"), "type": s.get("type")}
 
-    def snapshot(self, t, station_id=None):
+    def snapshot(self, t: str, station_id: str | None = None) -> list[dict]:
         rows = self.obs_by_time.get(t, [])
         out = []
         for r in rows:
@@ -90,7 +90,7 @@ class VirtualClock:
         self.start_index = max(0, min(start_index, len(times) - 1)) if times else 0
         self.t0 = time.monotonic()
 
-    def index(self):
+    def index(self) -> int:
         elapsed = time.monotonic() - self.t0
         steps = int(elapsed // self.step_interval_sec)
         i = self.start_index + steps
@@ -101,7 +101,7 @@ class VirtualClock:
             return i % n
         return min(i, n - 1)
 
-    def state(self):
+    def state(self) -> dict:
         i = self.index()
         n = len(self.times)
         return {

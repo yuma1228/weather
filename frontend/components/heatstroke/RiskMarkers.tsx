@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleMarker, Popup } from "react-leaflet";
-import { riskColor } from "../../lib/risk";
+import { riskColor, RISK } from "../../lib/risk";
 import { fmt } from "../../lib/format";
 import type { Observation } from "../../lib/types";
 
@@ -51,7 +51,7 @@ export default function RiskMarkers({
               >
                 WBGT {o.wbgt ?? "―"}
               </span>{" "}
-              {o.risk_label}
+              {RISK[o.risk_level].label}
               <table className="mt-1 border-collapse text-xs">
                 <tbody>
                   <Row label="気温" value={fmt(o.temp, "℃")} />

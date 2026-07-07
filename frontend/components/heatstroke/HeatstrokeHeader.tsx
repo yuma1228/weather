@@ -1,6 +1,7 @@
 "use client";
 
 import RiskLegend from "./RiskLegend";
+import { RISK } from "../../lib/risk";
 import type { WeatherPayload } from "../../lib/types";
 
 interface Props {
@@ -21,7 +22,7 @@ export default function HeatstrokeHeader({ payload, connected }: Props) {
       {payload?.hottest && (
         <div className="text-[13px]">
           最高WBGT: <b className="text-red-400">{payload.hottest.name}</b>{" "}
-          {payload.hottest.wbgt}℃（{payload.hottest.risk_label}）
+          {payload.hottest.wbgt}℃（{RISK[payload.hottest.risk_level].label}）
         </div>
       )}
 
