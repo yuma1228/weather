@@ -2,6 +2,7 @@ import asyncio
 import json
 import threading
 import time
+from collections import deque
 from contextlib import asynccontextmanager
 
 import requests
@@ -15,6 +16,7 @@ import config
 
 SOURCE = config.SOURCE
 POLL_INTERVAL_SEC = config.POLL_INTERVAL_SEC
+HISTORY_MAX = config.HISTORY_MAX
 
 WBGT_LEVEL = [
     (31.0, "danger"),
@@ -89,10 +91,6 @@ def process(snapshot: dict) -> dict:
 
     return {
         "datetime": snapshot.get("datetime"),
-        "index": snapshot.get("index"),
-        "total": snapshot.get("total"),
-        "step_interval_sec": snapshot.get("step_interval_sec"),
-        "count": len(obs),
         "risk_counts": risk_counts,
         "hottest": {
             "station_id": hottest["station_id"],
@@ -115,22 +113,27 @@ class Poller:
         self._lock = threading.Lock()
         self._payload: dict | None = None
         self._version = 0
-        self._alive = True
         self._sess = requests.Session()
         self._sess.trust_env = False
+        self._history: deque[dict[str, float | None]] = deque(maxlen=HISTORY_MAX)
 
     def run(self) -> None:
         last_index = None
-        while self._alive:
+        while True:
             try:
                 clk = self._sess.get(f"{SOURCE}/clock", timeout=10).json()
                 if clk.get("index") != last_index:
                     last_index = clk.get("index")
                     snap = self._sess.get(f"{SOURCE}/now", timeout=30).json()
                     payload = process(snap)
+                    precip = {
+                        o["station_id"]: o.get("precip")
+                        for o in payload["observations"]
+                    }
                     with self._lock:
                         self._payload = payload
                         self._version += 1
+                        self._history.append(precip)
             except Exception as ex:
                 print(f"[poller] {ex}")
             time.sleep(POLL_INTERVAL_SEC)
@@ -138,6 +141,12 @@ class Poller:
     def snapshot(self) -> tuple[dict | None, int]:
         with self._lock:
             return self._payload, self._version
+
+    def history_avg(self, station_id: str, hours: int) -> float | None:
+        with self._lock:
+            entries = list(self._history)[-hours:]
+        vals = [m[station_id] for m in entries if m.get(station_id) is not None]
+        return round(sum(vals) / len(vals), 1) if vals else None
 
 
 poller = Poller()
@@ -158,23 +167,10 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
-
-@app.get("/")
-def index():
-    return {
-        "role": "processing layer (server.py → WBGT加工 → SSE)",
-        "source": SOURCE,
-        "endpoints": {
-            "/now": "最新の加工済みスナップショット(1回)",
-            "/stream": "SSE。時刻が進むたび加工済みスナップショットを push",
-        },
-    }
-
-
-@app.get("/now")
-def get_now():
-    payload, _ = poller.snapshot()
-    return payload or {"observations": [], "count": 0}
+@app.get("/history")
+def get_history(station_id: str, hours: int = HISTORY_MAX) -> dict:
+    hours = max(1, min(hours, HISTORY_MAX))
+    return {"precip_avg": poller.history_avg(station_id, hours)}
 
 
 @app.get("/stream")

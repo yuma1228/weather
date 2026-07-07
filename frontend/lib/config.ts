@@ -3,4 +3,5 @@
 export const API_BASE = "http://localhost:8001";
 
 export const STREAM_URL = `${API_BASE}/stream`;
-export const NOW_URL = `${API_BASE}/now`;
+
+export const MAX_WINDOW_HOURS = 24;

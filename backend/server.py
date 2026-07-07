@@ -1,8 +1,7 @@
 import csv
 import glob
 import time
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
@@ -18,10 +17,8 @@ STATION_NUMERIC = {"lat", "lon", "elev"}
 
 class WeatherData:
     def __init__(self):
-        self.stations = []
         self.station_by_id = {}
         self.obs_by_time = {}
-        self.obs_by_station = {}
         self.times = []
         self._load()
 
@@ -42,7 +39,6 @@ class WeatherData:
                     for k in STATION_NUMERIC:
                         if k in row:
                             row[k] = self._num(row[k])
-                    self.stations.append(row)
                     self.station_by_id[row["station_id"]] = row
 
         for obs_path in sorted(glob.glob(config.OBSERVATIONS_GLOB)):
@@ -56,11 +52,8 @@ class WeatherData:
                             row[k] = None
                     t = row["datetime"]
                     self.obs_by_time.setdefault(t, []).append(row)
-                    self.obs_by_station.setdefault(row["station_id"], []).append(row)
 
         self.times = sorted(self.obs_by_time.keys())
-        for sid in self.obs_by_station:
-            self.obs_by_station[sid].sort(key=lambda r: r["datetime"])
 
     def station_meta(self, sid: str) -> dict:
         s = self.station_by_id.get(sid)
@@ -101,16 +94,11 @@ class VirtualClock:
             return i % n
         return min(i, n - 1)
 
-    def state(self) -> dict:
+    def state(self):
         i = self.index()
-        n = len(self.times)
         return {
-            "datetime": self.times[i] if n else None,
+            "datetime": self.times[i] if self.times else None,
             "index": i,
-            "total": n,
-            "looping": self.loop,
-            "step_interval_sec": self.step_interval_sec,
-            "elapsed_sec": round(time.monotonic() - self.t0, 1),
         }
 
 
@@ -124,96 +112,17 @@ clock = VirtualClock(
     data.times, config.STEP_INTERVAL_SEC, config.LOOP, config.START_INDEX,
 )
 
-
-@app.get("/")
-def index():
-    return {
-        "endpoints": {
-            "/now": "今の仮想時刻の全地点スナップショット",
-            "/clock": "今の仮想時刻だけ",
-            "/stations": "地点マスタ",
-            "/times": "時刻一覧",
-            "/at": "?t=時刻 で全地点スナップショット",
-            "/observations": "?station_id= の時系列",
-            "/latest": "各地点の最新値",
-            "/docs": "Swagger UI",
-        },
-        "station_count": len(data.stations),
-        "time_count": len(data.times),
-        "time_range": [data.times[0], data.times[-1]] if data.times else [],
-    }
-
-
 @app.get("/clock")
 def get_clock():
     return clock.state()
 
 
 @app.get("/now")
-def get_now(station_id: Optional[str] = Query(None)):
+def get_now(station_id: str | None = None):
     st = clock.state()
     t = st["datetime"]
     snap = data.snapshot(t, station_id) if t else []
-    return {**st, "count": len(snap), "observations": snap}
-
-
-@app.get("/stations")
-def get_stations(type: Optional[str] = Query(None, description="官署 / アメダス")):
-    items = data.stations
-    if type:
-        items = [s for s in items if s.get("type") == type]
-    return {"count": len(items), "stations": items}
-
-
-@app.get("/times")
-def get_times():
-    return {"count": len(data.times), "times": data.times}
-
-
-@app.get("/at")
-def get_at(
-    t: str = Query(..., description="時刻 YYYY-MM-DD HH:MM:SS"),
-    station_id: Optional[str] = Query(None),
-):
-    t = t.replace("T", " ")
-    snap = data.snapshot(t, station_id)
-    return {"datetime": t, "count": len(snap), "observations": snap}
-
-
-@app.get("/observations")
-def get_observations(
-    station_id: str = Query(..., description="地点ID 例 s47662"),
-    start: Optional[str] = Query(None, description="開始時刻(含む)"),
-    end: Optional[str] = Query(None, description="終了時刻(含む)"),
-    limit: Optional[int] = Query(None, ge=1),
-):
-    rows = data.obs_by_station.get(station_id)
-    if rows is None:
-        raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
-    if start:
-        rows = [r for r in rows if r["datetime"] >= start]
-    if end:
-        rows = [r for r in rows if r["datetime"] <= end]
-    if limit:
-        rows = rows[:limit]
-    return {"station_id": station_id, "count": len(rows), "observations": rows}
-
-
-@app.get("/latest")
-def get_latest(station_id: Optional[str] = Query(None)):
-    if station_id:
-        rows = data.obs_by_station.get(station_id)
-        if rows is None:
-            raise HTTPException(status_code=404, detail=f"unknown station_id: {station_id}")
-        return {"observation": rows[-1] if rows else None}
-    latest = []
-    for sid, rows in data.obs_by_station.items():
-        if rows:
-            m = dict(rows[-1])
-            m.update(data.station_meta(sid))
-            latest.append(m)
-    latest.sort(key=lambda r: r["station_id"])
-    return {"count": len(latest), "observations": latest}
+    return {"datetime": t, "observations": snap}
 
 
 if __name__ == "__main__":

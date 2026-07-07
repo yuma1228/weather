@@ -4,7 +4,7 @@ import { RAIN_LEVELS } from "../../lib/rain";
 
 export default function RainLegend() {
   return (
-    <div className="ml-auto flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2.5">
       {RAIN_LEVELS.map(([th, color, label]) => (
         <span className="flex items-center gap-1.5 text-xs" key={th}>
           <span

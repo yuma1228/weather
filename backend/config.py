@@ -17,4 +17,6 @@ CLIENT_PORT = 8001
 POLL_INTERVAL_SEC = 1   # client が server を見に行く間隔
 STREAM_CHECK_SEC = 1    # SSE が新フレームを確認してフロントへ push する間隔
 
+HISTORY_MAX = 24  # client が保持する時刻数(=平均を出せる最大時間)
+
 SOURCE = f"http://{SERVER_HOST}:{SERVER_PORT}"
