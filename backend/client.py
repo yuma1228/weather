@@ -75,11 +75,19 @@ def process(snapshot):
     counts = {key: 0 for _, key, _ in RISK_LEVELS}
     counts["unknown"] = 0
     hottest = None
+    wettest = None
+    raining_count = 0
     for o in obs:
         counts[o["risk_level"]] = counts.get(o["risk_level"], 0) + 1
         w = o.get("wbgt")
         if w is not None and (hottest is None or w > hottest["wbgt"]):
             hottest = o
+        p = o.get("precip")
+        if p is not None:
+            if p >= 0.1:
+                raining_count += 1
+            if wettest is None or p > wettest["precip"]:
+                wettest = o
 
     return {
         "datetime": snapshot.get("datetime"),
@@ -94,6 +102,12 @@ def process(snapshot):
             "wbgt": hottest["wbgt"],
             "risk_label": hottest["risk_label"],
         } if hottest else None,
+        "raining_count": raining_count,
+        "wettest": {
+            "station_id": wettest["station_id"],
+            "name": wettest["name"],
+            "precip": wettest["precip"],
+        } if wettest else None,
         "observations": obs,
     }
 

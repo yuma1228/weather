@@ -2,7 +2,6 @@
 
 import { RAIN_LEVELS } from "../../lib/rain";
 
-// 降水強度の凡例(強い順)。末尾に「降水なし」を添える。
 export default function RainLegend() {
   return (
     <div className="ml-auto flex flex-wrap gap-2.5">

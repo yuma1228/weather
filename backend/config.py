@@ -1,5 +1,5 @@
 # --- 仮想時計(server.py) --------------------------------------------------
-STEP_INTERVAL_SEC = 0.5
+STEP_INTERVAL_SEC = 1
 LOOP = True
 START_INDEX = 800
 
@@ -14,7 +14,7 @@ SERVER_PORT = 8000
 # --- 処理系(WBGT加工 + SSE client.py) -------------------------------------
 CLIENT_HOST = "localhost"
 CLIENT_PORT = 8001
-POLL_INTERVAL_SEC = 0.5   # client が server を見に行く間隔
-STREAM_CHECK_SEC = 0.5    # SSE が新フレームを確認してフロントへ push する間隔
+POLL_INTERVAL_SEC = 1   # client が server を見に行く間隔
+STREAM_CHECK_SEC = 1    # SSE が新フレームを確認してフロントへ push する間隔
 
 SOURCE = f"http://{SERVER_HOST}:{SERVER_PORT}"

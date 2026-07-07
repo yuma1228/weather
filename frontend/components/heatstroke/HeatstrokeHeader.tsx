@@ -1,6 +1,5 @@
 "use client";
 
-import Clock from "../common/Clock";
 import RiskLegend from "./RiskLegend";
 import type { WeatherPayload } from "../../lib/types";
 
@@ -15,7 +14,9 @@ export default function HeatstrokeHeader({ payload, connected }: Props) {
     <div className="flex flex-wrap items-center gap-5 border-b border-slate-700 bg-slate-800 px-4 py-2.5">
       <h1 className="m-0 text-base font-bold">熱中症リスク</h1>
 
-      <Clock payload={payload} />
+      <div className="text-lg font-semibold tabular-nums">
+        {payload?.datetime ?? "接続待ち…"}
+      </div>
 
       {payload?.hottest && (
         <div className="text-[13px]">
