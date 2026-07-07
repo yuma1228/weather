@@ -175,7 +175,6 @@ def get_history(station_id: str, hours: int = HISTORY_MAX) -> dict:
 
 @app.get("/stream")
 async def stream():
-    """SSE。ポーラの version が上がる(=新しい時刻)たびに push。"""
 
     async def gen():
         last_version = -1

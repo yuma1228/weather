@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { STREAM_URL } from "../lib/config";
 import type { WeatherPayload } from "../lib/types";
 
@@ -9,11 +16,12 @@ export interface WeatherStream {
   connected: boolean;
 }
 
+const WeatherStreamContext = createContext<WeatherStream | null>(null);
+
 /**
  * 処理系(client.py)の SSE を購読し、最新の加工済みスナップショットを返す。
- * どのページからでも import して使える。
  */
-export function useWeatherStream(): WeatherStream {
+function useWeatherStreamSource(): WeatherStream {
   const [payload, setPayload] = useState<WeatherPayload | null>(null);
   const [connected, setConnected] = useState(false);
 
@@ -32,4 +40,18 @@ export function useWeatherStream(): WeatherStream {
   }, []);
 
   return { payload, connected };
+}
+
+export function WeatherStreamProvider({ children }: { children: ReactNode }) {
+  const value = useWeatherStreamSource();
+  return createElement(WeatherStreamContext.Provider, { value }, children);
+}
+
+// どのページからでも import して使える共有ストリーム。
+export function useWeatherStream(): WeatherStream {
+  const value = useContext(WeatherStreamContext);
+  if (!value) {
+    throw new Error("useWeatherStream must be used inside WeatherStreamProvider");
+  }
+  return value;
 }

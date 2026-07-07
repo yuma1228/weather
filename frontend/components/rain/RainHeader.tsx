@@ -18,12 +18,7 @@ export default function RainHeader({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-700 bg-slate-800 px-4 py-2.5">
-
-      <div className="text-lg font-semibold tabular-nums">
-        {payload?.datetime ?? "接続待ち…"}
-      </div>
-
-      <div className="text-[12px]">
+      <div className="text-[13px]">
         降水中: <b className="text-sky-400">{payload?.raining_count ?? 0}</b> 地点
         {wettest && (
           <>
