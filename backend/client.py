@@ -4,6 +4,7 @@ import threading
 import time
 from collections import deque
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
 import requests
 from fastapi import FastAPI
@@ -17,6 +18,7 @@ import config
 SOURCE = config.SOURCE
 POLL_INTERVAL_SEC = config.POLL_INTERVAL_SEC
 HISTORY_MAX = config.HISTORY_MAX
+DT_FMT = "%Y-%m-%d %H:%M:%S"
 
 WBGT_LEVEL = [
     (31.0, "danger"),
@@ -115,7 +117,7 @@ class Poller:
         self._version = 0
         self._sess = requests.Session()
         self._sess.trust_env = False
-        self._history: deque[dict[str, dict[str, float | None]]] = deque(
+        self._history: deque[tuple[datetime, dict[str, dict[str, float | None]]]] = deque(
             maxlen=HISTORY_MAX
         )
 
@@ -135,10 +137,13 @@ class Poller:
                         }
                         for o in payload["observations"]
                     }
+                    dt_text = payload.get("datetime")
+                    dt = datetime.strptime(dt_text, DT_FMT) if dt_text else None
                     with self._lock:
                         self._payload = payload
                         self._version += 1
-                        self._history.append(metrics)
+                        if dt is not None:
+                            self._history.append((dt, metrics))
             except Exception as ex:
                 print(f"[poller] {ex}")
             time.sleep(POLL_INTERVAL_SEC)
@@ -149,9 +154,15 @@ class Poller:
 
     def history_avg(self, station_id: str, field: str, hours: int) -> float | None:
         with self._lock:
-            entries = list(self._history)[-hours:]
+            entries = list(self._history)
+        if not entries:
+            return None
+        end = entries[-1][0]
+        cutoff = end - timedelta(hours=hours)
         vals = []
-        for metrics in entries:
+        for dt, metrics in entries:
+            if not (cutoff < dt <= end):
+                continue
             station = metrics.get(station_id)
             if station is None:
                 continue
