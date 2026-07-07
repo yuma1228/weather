@@ -18,9 +18,6 @@ export interface WeatherStream {
 
 const WeatherStreamContext = createContext<WeatherStream | null>(null);
 
-/**
- * 処理系(client.py)の SSE を購読し、最新の加工済みスナップショットを返す。
- */
 function useWeatherStreamSource(): WeatherStream {
   const [payload, setPayload] = useState<WeatherPayload | null>(null);
   const [connected, setConnected] = useState(false);

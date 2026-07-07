@@ -123,8 +123,9 @@ def fetch_station_master(sess):
     stations.sort(key=lambda s: s["station_id"])
     return stations
 
-def fetch_station_csv(sess, station_id):
-    elem = "[" + ",".join(f'["{c}",""]' for c in ELEMENT_CODES) + "]"
+def fetch_station_csv(sess, station_id, element_codes=None):
+    codes = element_codes if element_codes is not None else ELEMENT_CODES
+    elem = "[" + ",".join(f'["{c}",""]' for c in codes) + "]"
     s, e = START_DATE, END_DATE
     payload = {
         "stationNumList": f'["{station_id}"]',

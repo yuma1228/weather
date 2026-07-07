@@ -64,6 +64,13 @@ export default function RainMarkers({
                 <table className="mt-1 border-collapse text-xs">
                   <tbody>
                     <Row label="降水" value={fmt(o.precip, "mm")} />
+                    <Row label="気温" value={fmt(o.temp, "℃")} />
+                    <Row
+                      label={`平均気温(${windowHours}h)`}
+                      value={fmt(avgs[o.station_id]?.temp_avg, "℃")}
+                    />
+                    <Row label="風向" value={o.wind_dir ?? "―"} />
+                    <Row label="風速" value={fmt(o.wind_speed, "m/s")} />
                     <Row
                       label={`平均降水(${windowHours}h)`}
                       value={fmt(avgs[o.station_id]?.precip_avg, "mm/h")}

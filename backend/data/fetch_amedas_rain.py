@@ -1,15 +1,16 @@
-"""アメダスの降水量(要素101)を取得して雨ページのデータ密度を上げる。
+"""アメダスの降水量・気温・風(要素101/201/301)を取得する。
 
 官署データ(data_get_script.py が作る observations.csv)とは別ファイルに出力する。
 server.py は data/observations*.csv / data/stations*.csv をまとめて読むので、
-このファイルを置くだけで雨ページの地点が一気に増える。
+このファイルを置くだけで雨ページの地点が一気に増え、観測がある地点は
+気温・風向・風速も使える。
 
   出力: observations_amedas.csv , stations_amedas.csv
   実行: (backend/data の中で)
       py fetch_amedas_rain.py         # 全アメダス
       py fetch_amedas_rain.py 5       # 先頭5地点だけ(疎通確認用)
 
-アメダスは湿度・日射を持たないため WBGT は出せない。よって降水量のみ取得し、
+アメダスは湿度・日射を持たないため WBGT は出せない。
 熱中症ページ側では WBGT の出る地点だけ表示する(server/client は変更不要)。
 """
 
@@ -19,11 +20,17 @@ import time
 
 import data_get_script as obs  # セッション/地点マスタ/CSV取得/パースを再利用
 
-# 降水量のみ取得する設定に上書き
+# アメダスを対象にする。取得項目は地点ごとの観測有無で出し分ける。
 obs.STATION_MODE = "amedas"
-obs.ELEMENT_CODES = ["101"]  # 101 = 降水量
 
-# observations.csv と同じ列にそろえる(降水以外は空欄)
+# kansoku は先頭から 降水/気温/風 の有無を表す。
+AMEDAS_ELEMENTS = [
+    (0, "101"),  # 降水量
+    (1, "201"),  # 気温
+    (2, "301"),  # 風向・風速
+]
+
+# observations.csv と同じ列にそろえる(観測がない項目は空欄)
 OBS_COLS = [
     "datetime", "station_id", "name", "temp", "precip", "humidity", "solar",
     "sunshine", "cloud", "wind_dir", "wind_speed", "vapor_pressure", "dew_point",
@@ -31,13 +38,22 @@ OBS_COLS = [
 ST_COLS = ["station_id", "name", "lat", "lon", "elev", "prid", "kansoku", "type"]
 
 
+def element_codes(st: dict) -> list[str]:
+    kansoku = st.get("kansoku") or ""
+    return [
+        code
+        for pos, code in AMEDAS_ELEMENTS
+        if len(kansoku) > pos and kansoku[pos] == "1"
+    ]
+
+
 def main():
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else None
 
     sess = obs.open_session()
     stations = obs.fetch_station_master(sess)
-    # 降水観測のある地点のみ(kansoku 6桁の先頭=降水の有無)
-    stations = [s for s in stations if (s.get("kansoku") or "")[:1] == "1"]
+    # 雨ページの密度を上げる用途なので、降水観測のある地点を対象にする。
+    stations = [s for s in stations if "101" in element_codes(s)]
     if limit:
         stations = stations[:limit]
     print(f"対象アメダス: {len(stations)} 地点")
@@ -50,14 +66,15 @@ def main():
         for i, st in enumerate(stations, 1):
             sid, name = st["station_id"], st["name"]
             try:
-                text = obs.fetch_station_csv(sess, sid)
+                text = obs.fetch_station_csv(sess, sid, element_codes(st))
                 parsed = obs.parse_csv(text)
                 for rec in parsed:
                     row = {c: "" for c in OBS_COLS}
                     row["datetime"] = rec["datetime"]
                     row["station_id"] = sid
                     row["name"] = name
-                    row["precip"] = rec.get("precip")
+                    for key in ("temp", "precip", "wind_dir", "wind_speed"):
+                        row[key] = rec.get(key)
                     w.writerow(row)
                 f.flush()
                 done.append(st)
