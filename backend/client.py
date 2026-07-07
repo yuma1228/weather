@@ -115,7 +115,9 @@ class Poller:
         self._version = 0
         self._sess = requests.Session()
         self._sess.trust_env = False
-        self._history: deque[dict[str, float | None]] = deque(maxlen=HISTORY_MAX)
+        self._history: deque[dict[str, dict[str, float | None]]] = deque(
+            maxlen=HISTORY_MAX
+        )
 
     def run(self) -> None:
         last_index = None
@@ -126,14 +128,17 @@ class Poller:
                     last_index = clk.get("index")
                     snap = self._sess.get(f"{SOURCE}/now", timeout=30).json()
                     payload = process(snap)
-                    precip = {
-                        o["station_id"]: o.get("precip")
+                    metrics = {
+                        o["station_id"]: {
+                            "temp": o.get("temp"),
+                            "precip": o.get("precip"),
+                        }
                         for o in payload["observations"]
                     }
                     with self._lock:
                         self._payload = payload
                         self._version += 1
-                        self._history.append(precip)
+                        self._history.append(metrics)
             except Exception as ex:
                 print(f"[poller] {ex}")
             time.sleep(POLL_INTERVAL_SEC)
@@ -142,10 +147,17 @@ class Poller:
         with self._lock:
             return self._payload, self._version
 
-    def history_avg(self, station_id: str, hours: int) -> float | None:
+    def history_avg(self, station_id: str, field: str, hours: int) -> float | None:
         with self._lock:
             entries = list(self._history)[-hours:]
-        vals = [m[station_id] for m in entries if m.get(station_id) is not None]
+        vals = []
+        for metrics in entries:
+            station = metrics.get(station_id)
+            if station is None:
+                continue
+            value = station.get(field)
+            if value is not None:
+                vals.append(value)
         return round(sum(vals) / len(vals), 1) if vals else None
 
 
@@ -170,7 +182,10 @@ app.add_middleware(
 @app.get("/history")
 def get_history(station_id: str, hours: int = HISTORY_MAX) -> dict:
     hours = max(1, min(hours, HISTORY_MAX))
-    return {"precip_avg": poller.history_avg(station_id, hours)}
+    return {
+        "temp_avg": poller.history_avg(station_id, "temp", hours),
+        "precip_avg": poller.history_avg(station_id, "precip", hours),
+    }
 
 
 @app.get("/stream")

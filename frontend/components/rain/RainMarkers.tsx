@@ -66,7 +66,7 @@ export default function RainMarkers({
                     <Row label="降水" value={fmt(o.precip, "mm")} />
                     <Row
                       label={`平均降水(${windowHours}h)`}
-                      value={fmt(avgs[o.station_id], "mm/h")}
+                      value={fmt(avgs[o.station_id]?.precip_avg, "mm/h")}
                     />
                   </tbody>
                 </table>

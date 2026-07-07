@@ -13,7 +13,7 @@ export default function RiskLegend({
   counts?: Partial<Record<RiskLevel, number>>;
 }) {
   return (
-    <div className="ml-auto flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2.5">
       {LEVELS.map((k) => (
         <span className="flex items-center gap-1.5 text-xs" key={k}>
           <span

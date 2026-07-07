@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../lib/config";
 
+export interface WindowAvg {
+  temp_avg: number | null;
+  precip_avg: number | null;
+}
+
 export function useWindowAvg(
   datetime: string | null | undefined,
   windowHours: number
 ) {
-  const [avgs, setAvgs] = useState<Record<string, number | null>>({});
+  const [avgs, setAvgs] = useState<Record<string, WindowAvg>>({});
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,8 +23,8 @@ export function useWindowAvg(
         const res = await fetch(
           `${API_BASE}/history?station_id=${openId}&hours=${windowHours}`
         );
-        const { precip_avg } = await res.json();
-        if (alive) setAvgs((p) => ({ ...p, [openId]: precip_avg }));
+        const avg: WindowAvg = await res.json();
+        if (alive) setAvgs((p) => ({ ...p, [openId]: avg }));
       } catch {
         /* client 未起動などは無視 */
       }
