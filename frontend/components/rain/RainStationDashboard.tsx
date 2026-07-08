@@ -35,6 +35,23 @@ export default function RainStationDashboard({
     ? Math.round((rainyFrames / historySlice.length) * 100)
     : null;
 
+  const tempPoints = historySlice
+    .map((p) => p.temp)
+    .filter((v): v is number => v != null);
+  const minTemp = Math.min(...tempPoints, observation.temp ?? Infinity);
+  const maxTemp = Math.max(...tempPoints, observation.temp ?? -Infinity);
+  const tempRange = maxTemp - minTemp || 1;
+  const avgTemp = tempPoints.length
+    ? Math.round((tempPoints.reduce((a, b) => a + b, 0) / tempPoints.length) * 10) / 10
+    : null;
+
+  const precipPoints = historySlice
+    .map((p) => p.precip)
+    .filter((v): v is number => v != null);
+  const avgPrecip = precipPoints.length
+    ? Math.round((precipPoints.reduce((a, b) => a + b, 0) / precipPoints.length) * 10) / 10
+    : null;
+
   return (
     <aside className="absolute bottom-3 left-3 right-3 z-[1000] rounded-md border border-slate-700 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur sm:bottom-3 sm:left-auto sm:top-3 sm:w-[380px]">
       <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
@@ -60,26 +77,15 @@ export default function RainStationDashboard({
       </div>
 
       <div className="p-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <div className="text-xs text-slate-400">観測時刻</div>
-            <div className="mt-1 text-sm text-slate-200">
-              {observation.datetime ?? datetime ?? "―"}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-slate-400">現在</div>
-            <div className="mt-1 text-sm font-semibold text-slate-100">
-              {fmt(observation.precip, "mm/h")}
-            </div>
-          </div>
-        </div>
-
-        <section className="mt-4 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+        <section className="mt-1 rounded-md border border-slate-800 bg-slate-900/60 p-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-slate-100">直近推移</h2>
+            <h2 className="text-sm font-semibold text-slate-100">降水推移</h2>
             <span className="text-xs text-slate-400">
-              {loading ? "更新中" : error ? "履歴API未接続" : `${historySlice.length}点`}
+              {loading
+                ? "更新中"
+                : error
+                  ? "履歴API未接続"
+                  : `平均 ${fmt(avgPrecip, "mm/h")}`}
             </span>
           </div>
           <div className="mt-3 flex h-24 items-end gap-1 rounded bg-slate-950 p-2">
@@ -106,10 +112,56 @@ export default function RainStationDashboard({
               </div>
             )}
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-400">
-            <div>降水フレーム: {rainyRatio == null ? "―" : `${rainyRatio}%`}</div>
-            <div className="text-right">{windowHours}h window</div>
+          {historySlice.length > 0 && (
+            <div className="mt-1 flex gap-1 text-[10px] text-slate-500">
+              {historySlice.map((p, i) => (
+                <div key={p.datetime} className="min-w-0 flex-1 text-center">
+                  {i % 6 === 0 ? p.datetime.slice(11, 16) : ""}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-3 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-100">気温推移</h2>
+            <span className="text-xs text-slate-400">
+              平均 {fmt(avgTemp, "℃")}
+            </span>
           </div>
+          <div className="mt-3 h-16 rounded bg-slate-950 p-2">
+            {tempPoints.length > 1 ? (
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+                <polyline
+                  points={tempPoints
+                    .map((v, i) => {
+                      const x = (i / (tempPoints.length - 1)) * 100;
+                      const y = 100 - ((v - minTemp) / tempRange) * 100;
+                      return `${x},${y}`;
+                    })
+                    .join(" ")}
+                  fill="none"
+                  stroke="#fb923c"
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
+                履歴がたまるとここに気温推移が出ます
+              </div>
+            )}
+          </div>
+          {historySlice.length > 0 && (
+            <div className="mt-1 flex gap-1 text-[10px] text-slate-500">
+              {historySlice.map((p, i) => (
+                <div key={p.datetime} className="min-w-0 flex-1 text-center">
+                  {i % 6 === 0 ? p.datetime.slice(11, 16) : ""}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </aside>
