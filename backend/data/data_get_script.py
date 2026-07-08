@@ -3,6 +3,7 @@ import io
 import re
 import time
 import datetime as dt
+from pathlib import Path
 
 import requests
 import urllib3
@@ -10,8 +11,9 @@ import urllib3
 # verify=False 時の警告を抑制(TLS傍受環境のため無検証で運用)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-START_DATE = dt.date(2025, 8, 1)
+START_DATE = dt.date(2025, 9, 1)
 END_DATE   = dt.date(2025, 9, 15)
+DATA_DIR = Path(__file__).resolve().parent
 
 
 #   "kansho" … 気象官署
@@ -23,7 +25,8 @@ STATION_MODE = "kansho"
 #   607=雲量, 301=風向・風速, 604=蒸気圧, 612=露点温度
 ELEMENT_CODES = ["201", "101", "605", "610", "401", "607", "301", "604", "612"]
 
-# 集計粒度: 9=時別値(1時間ごと)
+# 気象庁の過去データDL(obsdl)では 1=日別値, 9=時別値。
+# 10分値はこのエンドポイントの aggrgPeriod=1 では取れない。
 AGGRG_PERIOD = 9
 
 REQUEST_INTERVAL = 1.2
@@ -158,6 +161,10 @@ def parse_csv(text):
             hidx = i
             break
     if hidx is None:
+        if any(row and row[0].strip() == "年月日" for row in rows):
+            raise ValueError(
+                "時別値ではなく日別値CSVです。obsdl の aggrgPeriod=1 は10分値ではなく日別値です。"
+            )
         return []
 
     h1 = rows[hidx]
@@ -227,13 +234,16 @@ def main():
     
     obs_cols = ["datetime", "station_id", "name"] + VALUE_KEYS
     obs_rows.sort(key=lambda r: (r["datetime"], r["station_id"]))
-    with open("./observations.csv", "w", encoding="utf-8-sig", newline="") as f:
+    if not obs_rows:
+        raise RuntimeError("観測データが0件のため observations.csv を上書きしません")
+
+    with open(DATA_DIR / "observations.csv", "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=obs_cols)
         w.writeheader()
         w.writerows(obs_rows)
 
     st_cols = ["station_id", "name", "lat", "lon", "elev", "prid", "kansoku", "type"]
-    with open("./stations.csv", "w", encoding="utf-8-sig", newline="") as f:
+    with open(DATA_DIR / "stations.csv", "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=st_cols)
         w.writeheader()
         w.writerows(stations)

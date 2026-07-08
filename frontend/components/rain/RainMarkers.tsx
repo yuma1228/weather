@@ -21,10 +21,12 @@ export default function RainMarkers({
   observations = [],
   datetime,
   windowHours,
+  onShowDetails,
 }: {
   observations?: Observation[];
   datetime?: string | null;
   windowHours: number;
+  onShowDetails?: (observation: Observation) => void;
 }) {
   const { avgs, open, close } = useWindowAvg(datetime, windowHours);
 
@@ -77,6 +79,16 @@ export default function RainMarkers({
                     />
                   </tbody>
                 </table>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onShowDetails?.(o);
+                  }}
+                  className="mt-2 w-full rounded-md bg-sky-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
+                >
+                  詳細を見る
+                </button>
               </div>
             </Popup>
           </CircleMarker>

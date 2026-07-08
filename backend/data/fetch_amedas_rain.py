@@ -15,6 +15,7 @@ server.py は data/observations*.csv / data/stations*.csv をまとめて読む�
 """
 
 import csv
+import os
 import sys
 import time
 
@@ -49,6 +50,10 @@ def element_codes(st: dict) -> list[str]:
 
 def main():
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else None
+    observations_path = obs.DATA_DIR / "observations_amedas.csv"
+    stations_path = obs.DATA_DIR / "stations_amedas.csv"
+    observations_tmp = obs.DATA_DIR / "observations_amedas.csv.tmp"
+    stations_tmp = obs.DATA_DIR / "stations_amedas.csv.tmp"
 
     sess = obs.open_session()
     stations = obs.fetch_station_master(sess)
@@ -60,7 +65,8 @@ def main():
 
     # 観測CSVは1地点ずつ追記+flush(途中で落ちても部分保存が残る)
     done = []
-    with open("./observations_amedas.csv", "w", encoding="utf-8-sig", newline="") as f:
+    row_count = 0
+    with open(observations_tmp, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=OBS_COLS)
         w.writeheader()
         for i, st in enumerate(stations, 1):
@@ -76,6 +82,7 @@ def main():
                     for key in ("temp", "precip", "wind_dir", "wind_speed"):
                         row[key] = rec.get(key)
                     w.writerow(row)
+                    row_count += 1
                 f.flush()
                 done.append(st)
             except Exception as ex:
@@ -84,10 +91,17 @@ def main():
                 print(f"  {i}/{len(stations)} ...")
             time.sleep(obs.REQUEST_INTERVAL)
 
-    with open("./stations_amedas.csv", "w", encoding="utf-8-sig", newline="") as f:
+    if row_count == 0:
+        observations_tmp.unlink(missing_ok=True)
+        raise RuntimeError("アメダス観測データが0件のため observations_amedas.csv を上書きしません")
+
+    with open(stations_tmp, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=ST_COLS)
         w.writeheader()
         w.writerows(done)
+
+    os.replace(observations_tmp, observations_path)
+    os.replace(stations_tmp, stations_path)
 
     print(f"完了: {len(done)} 地点を取得")
 

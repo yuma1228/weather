@@ -113,40 +113,64 @@ def process(snapshot: dict) -> dict:
 class Poller:
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._thread_lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
         self._payload: dict | None = None
         self._version = 0
-        self._sess = requests.Session()
-        self._sess.trust_env = False
         self._history: deque[tuple[datetime, dict[str, dict[str, float | None]]]] = deque(
             maxlen=HISTORY_MAX
         )
 
+    def start(self) -> None:
+        with self._thread_lock:
+            if self._thread and self._thread.is_alive():
+                return
+            self._stop.clear()
+            self._thread = threading.Thread(
+                target=self.run,
+                daemon=True,
+                name="weather-poller",
+            )
+            self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread and thread.is_alive():
+            thread.join(timeout=3)
+
     def run(self) -> None:
         last_index = None
-        while True:
-            try:
-                clk = self._sess.get(f"{SOURCE}/clock", timeout=10).json()
-                if clk.get("index") != last_index:
-                    last_index = clk.get("index")
-                    snap = self._sess.get(f"{SOURCE}/now", timeout=30).json()
-                    payload = process(snap)
-                    metrics = {
-                        o["station_id"]: {
-                            "temp": o.get("temp"),
-                            "precip": o.get("precip"),
+        sess = requests.Session()
+        sess.trust_env = False
+        try:
+            while not self._stop.is_set():
+                try:
+                    clk = sess.get(f"{SOURCE}/clock", timeout=10).json()
+                    if clk.get("index") != last_index:
+                        last_index = clk.get("index")
+                        snap = sess.get(f"{SOURCE}/now", timeout=30).json()
+                        payload = process(snap)
+                        metrics = {
+                            o["station_id"]: {
+                                "temp": o.get("temp"),
+                                "precip": o.get("precip"),
+                            }
+                            for o in payload["observations"]
                         }
-                        for o in payload["observations"]
-                    }
-                    dt_text = payload.get("datetime")
-                    dt = datetime.strptime(dt_text, DT_FMT) if dt_text else None
-                    with self._lock:
-                        self._payload = payload
-                        self._version += 1
-                        if dt is not None:
-                            self._history.append((dt, metrics))
-            except Exception as ex:
-                print(f"[poller] {ex}")
-            time.sleep(POLL_INTERVAL_SEC)
+                        dt_text = payload.get("datetime")
+                        dt = datetime.strptime(dt_text, DT_FMT) if dt_text else None
+                        with self._lock:
+                            self._payload = payload
+                            self._version += 1
+                            if dt is not None:
+                                self._history.append((dt, metrics))
+                except Exception as ex:
+                    print(f"[poller] {ex}")
+                self._stop.wait(POLL_INTERVAL_SEC)
+        finally:
+            sess.close()
 
     def snapshot(self) -> tuple[dict | None, int]:
         with self._lock:
@@ -171,14 +195,38 @@ class Poller:
                 vals.append(value)
         return round(sum(vals) / len(vals), 1) if vals else None
 
+    def history_series(self, station_id: str, hours: int) -> list[dict]:
+        with self._lock:
+            entries = list(self._history)
+        if not entries:
+            return []
+        end = entries[-1][0]
+        cutoff = end - timedelta(hours=hours)
+        points = []
+        for dt, metrics in entries:
+            if not (cutoff < dt <= end):
+                continue
+            station = metrics.get(station_id)
+            if station is None:
+                continue
+            points.append({
+                "datetime": dt.strftime(DT_FMT),
+                "temp": station.get("temp"),
+                "precip": station.get("precip"),
+            })
+            
+        print(f" points={points}")
+        return points
+
 
 poller = Poller()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    threading.Thread(target=poller.run, daemon=True).start()
+    poller.start()
     yield
+    poller.stop()
 
 
 app = FastAPI(
@@ -197,6 +245,34 @@ def get_history(station_id: str, hours: int = HISTORY_MAX) -> dict:
         "temp_avg": poller.history_avg(station_id, "temp", hours),
         "precip_avg": poller.history_avg(station_id, "precip", hours),
     }
+
+
+@app.get("/history_series")
+def get_history_series(station_id: str, hours: int = HISTORY_MAX) -> dict:
+    hours = max(1, min(hours, HISTORY_MAX))
+    return {
+        "station_id": station_id,
+        "hours": hours,
+        "points": poller.history_series(station_id, hours),
+    }
+
+
+@app.get("/debug/poller")
+def debug_poller() -> dict:
+    return poller.status()
+
+
+@app.get("/debug/threads")
+def debug_threads() -> list[dict]:
+    return [
+        {
+            "name": thread.name,
+            "ident": thread.ident,
+            "daemon": thread.daemon,
+            "alive": thread.is_alive(),
+        }
+        for thread in threading.enumerate()
+    ]
 
 
 @app.get("/stream")
