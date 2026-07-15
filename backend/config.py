@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
+RUNTIME_DATA_DIR = DATA_DIR / "runtime"
 
 # --- 仮想時計(server.py) --------------------------------------------------
 STEP_INTERVAL_SEC = 1
@@ -10,7 +11,10 @@ START_INDEX = 800
 
 # --- データファイル(server.py) --------------------------------------------
 STATIONS_GLOB = str(DATA_DIR / "stations*.csv")
-OBSERVATIONS_GLOB = str(DATA_DIR / "observations*.csv")
+OBSERVATIONS_GLOB = str(RUNTIME_DATA_DIR / "observations*.csv")
+# 観測CSVは官署+アメダスで計10年超・数GBあり全件をメモリに載せるとOOMするため、
+# 実行用CSVの最新日時から遡ってこの日数分だけメモリへ読み込む。
+LOAD_RECENT_DAYS = 30
 
 # --- サーバ(生データ配信 server.py) ---------------------------------------
 SERVER_HOST = "localhost"

@@ -1,10 +1,13 @@
 import csv
 import glob
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
+from data.build_runtime_data import latest_timestamp
 
 
 NUMERIC_FIELDS = {
@@ -41,16 +44,43 @@ class WeatherData:
                             row[k] = self._num(row[k])
                     self.station_by_id[row["station_id"]] = row
 
-        for obs_path in sorted(glob.glob(config.OBSERVATIONS_GLOB)):
-            with open(obs_path, encoding="utf-8-sig", newline="") as f:
-                for row in csv.DictReader(f):
+        obs_paths = sorted(glob.glob(config.OBSERVATIONS_GLOB))
+        if not obs_paths:
+            raise RuntimeError(
+                "実行用の観測CSVがありません。"
+                "backend/data/build_runtime_data.py を実行してください。"
+            )
+
+        # 実行用CSVは地点・年ブロック順なので、全体が日時順とは限らない。
+        # 日時列だけを先に比較し、対象期間の行だけCSVとして解析する。
+        # 官署とアメダスを同じ時刻で比較できるよう、全ファイルにデータがある
+        # 最新の共通時刻を終点にする。maxにすると更新日の古いアメダスが全件落ちる。
+        common_latest = min(latest_timestamp(Path(path)) for path in obs_paths)
+        latest_dt = datetime.strptime(common_latest, "%Y-%m-%d %H:%M:%S")
+        cutoff = (latest_dt - timedelta(days=config.LOAD_RECENT_DAYS)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        for obs_path in obs_paths:
+            path = Path(obs_path)
+            with path.open("rb") as raw_file:
+                header = raw_file.readline().decode("utf-8-sig").rstrip("\r\n")
+                fieldnames = next(csv.reader([header]))
+                cutoff_bytes = cutoff.encode("ascii")
+                end_bytes = common_latest.encode("ascii")
+                for line in raw_file:
+                    timestamp = line[:19]
+                    if not (cutoff_bytes <= timestamp <= end_bytes):
+                        continue
+                    values = next(csv.reader([line.decode("utf-8")]))
+                    row = dict(zip(fieldnames, values, strict=True))
+                    t = row["datetime"]
                     for k in NUMERIC_FIELDS:
                         if k in row:
                             row[k] = self._num(row[k])
                     for k in ("wind_dir", "cloud"):
                         if row.get(k) == "":
                             row[k] = None
-                    t = row["datetime"]
                     self.obs_by_time.setdefault(t, []).append(row)
 
         self.times = sorted(self.obs_by_time.keys())
