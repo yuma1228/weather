@@ -1,3 +1,7 @@
 fastapi
 uvicorn
 requests
+lightgbm
+pandas
+numpy
+scikit-learn
