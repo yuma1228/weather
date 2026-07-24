@@ -6,6 +6,7 @@ import { useWeatherStream } from "../../hooks/useWeatherStream";
 import RainHeader from "./RainHeader";
 import RainMarkers from "./RainMarkers";
 import RainStationDashboard from "./RainStationDashboard";
+import RainScatter from "./RainScatter";
 import { MAX_WINDOW_HOURS } from "../../lib/config";
 
 export default function RainMap() {
@@ -22,7 +23,9 @@ export default function RainMap() {
         windowHours={windowHours}
         onWindowHoursChange={setWindowHours}
       />
-      <div className="relative flex-1">
+      <div className="flex min-h-0 flex-1">
+        <RainScatter datetime={payload?.datetime} windowHours={windowHours} />
+        <div className="relative min-w-0 flex-1">
         <BaseMap>
           <RainMarkers
             observations={payload?.observations}
@@ -39,6 +42,7 @@ export default function RainMap() {
             onClose={() => setSelectedStationId(null)}
           />
         )}
+        </div>
       </div>
     </div>
   );

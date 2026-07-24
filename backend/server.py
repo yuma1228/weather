@@ -90,7 +90,8 @@ class WeatherData:
         if not s:
             return {}
         return {"lat": s.get("lat"), "lon": s.get("lon"),
-                "elev": s.get("elev"), "type": s.get("type")}
+                "elev": s.get("elev"), "type": s.get("type"),
+                "prid": s.get("prid")}
 
     def snapshot(self, t: str, station_id: str | None = None) -> list[dict]:
         rows = self.obs_by_time.get(t, [])

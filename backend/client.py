@@ -20,6 +20,15 @@ POLL_INTERVAL_SEC = config.POLL_INTERVAL_SEC
 HISTORY_MAX = config.HISTORY_MAX
 DT_FMT = "%Y-%m-%d %H:%M:%S"
 
+REGION_RANGES = [
+    ((11, 36), "北海道・東北"),
+    ((40, 46), "関東"),
+    ((48, 57), "中部"),
+    ((60, 65), "近畿"),
+    ((66, 74), "中国・四国"),
+    ((81, 91), "九州・沖縄"),
+]
+
 WBGT_LEVEL = [
     (31.0, "danger"),
     (28.0, "severe"),
@@ -61,6 +70,17 @@ def risk_of(wbgt: float | None) -> str:
         if wbgt >= threshold:
             return key
     return "unknown"
+
+
+def region_of(prid: str | int | None) -> str | None:
+    try:
+        n = int(prid)
+    except (TypeError, ValueError):
+        return None
+    for (lo, hi), name in REGION_RANGES:
+        if lo <= n <= hi:
+            return name
+    return None
 
 
 def annotate(obs: dict) -> dict:
@@ -195,6 +215,40 @@ class Poller:
                 vals.append(value)
         return round(sum(vals) / len(vals), 1) if vals else None
 
+    def window_points(self, hours: int) -> list[dict]:
+        with self._lock:
+            payload = self._payload
+            entries = list(self._history)
+        if payload is None:
+            return []
+
+        sums: dict[str, float] = {}
+        if entries:
+            end = entries[-1][0]
+            cutoff = end - timedelta(hours=hours)
+            for dt, metrics in entries:
+                if not (cutoff < dt <= end):
+                    continue
+                for sid, station in metrics.items():
+                    precip = station.get("precip")
+                    if precip is not None:
+                        sums[sid] = sums.get(sid, 0.0) + precip
+
+        points = []
+        for o in payload["observations"]:
+            region = region_of(o.get("prid"))
+            # 気温欠測の点は散布図に置けない。地域不明(昭和基地など)も除く。
+            if o.get("temp") is None or region is None:
+                continue
+            points.append({
+                "station_id": o["station_id"],
+                "name": o["name"],
+                "region": region,
+                "temp": o["temp"],
+                "precip_sum": round(sums.get(o["station_id"], 0.0), 1),
+            })
+        return points
+
     def history_series(self, station_id: str, hours: int) -> list[dict]:
         with self._lock:
             entries = list(self._history)
@@ -254,6 +308,17 @@ def get_history_series(station_id: str, hours: int = HISTORY_MAX) -> dict:
         "station_id": station_id,
         "hours": hours,
         "points": poller.history_series(station_id, hours),
+    }
+
+
+@app.get("/window")
+def get_window(hours: int = HISTORY_MAX) -> dict:
+    hours = max(1, min(hours, HISTORY_MAX))
+    payload, _ = poller.snapshot()
+    return {
+        "datetime": payload.get("datetime") if payload else None,
+        "hours": hours,
+        "points": poller.window_points(hours),
     }
 
 
