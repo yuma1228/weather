@@ -322,24 +322,6 @@ def get_window(hours: int = HISTORY_MAX) -> dict:
     }
 
 
-@app.get("/debug/poller")
-def debug_poller() -> dict:
-    return poller.status()
-
-
-@app.get("/debug/threads")
-def debug_threads() -> list[dict]:
-    return [
-        {
-            "name": thread.name,
-            "ident": thread.ident,
-            "daemon": thread.daemon,
-            "alive": thread.is_alive(),
-        }
-        for thread in threading.enumerate()
-    ]
-
-
 @app.get("/stream")
 async def stream():
 
