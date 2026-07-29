@@ -3,6 +3,7 @@
 import { isRaining, rainColor } from "../../lib/rain";
 import { fmt } from "../../lib/format";
 import { useStationHistory } from "../../hooks/useStationHistory";
+import { useStationForecast } from "../../hooks/useStationForecast";
 import type { Observation } from "../../lib/types";
 
 interface Props {
@@ -23,6 +24,11 @@ export default function RainStationDashboard({
     datetime,
     windowHours
   );
+  const {
+    forecast,
+    loading: forecastLoading,
+    error: forecastError,
+  } = useStationForecast(observation.station_id, datetime);
 
   const historySlice = points.slice(-24);
   const maxHistoryPrecip = Math.max(
@@ -53,7 +59,7 @@ export default function RainStationDashboard({
     : null;
 
   return (
-    <aside className="absolute bottom-3 left-3 right-3 z-[1000] rounded-md border border-slate-700 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur sm:bottom-3 sm:left-auto sm:top-3 sm:w-[380px]">
+    <aside className="absolute bottom-3 left-3 right-3 z-[1000] max-h-[calc(100%-1.5rem)] overflow-y-auto rounded-md border border-slate-700 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur sm:bottom-3 sm:left-auto sm:top-3 sm:w-[400px]">
       <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
@@ -77,7 +83,91 @@ export default function RainStationDashboard({
       </div>
 
       <div className="p-4">
-        <section className="mt-1 rounded-md border border-slate-800 bg-slate-900/60 p-3">
+        <section className="rounded-md border border-slate-700 bg-slate-900/80 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-100">現在の観測</h2>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded border border-slate-800 bg-slate-950/80 p-3">
+              <div className="text-[10px] text-slate-500">現在の気温</div>
+              <div className="mt-1 text-2xl font-semibold text-orange-300">
+                {fmt(observation.temp, "℃")}
+              </div>
+            </div>
+            <div className="rounded border border-slate-800 bg-slate-950/80 p-3">
+              <div className="text-[10px] text-slate-500">現在の降水量</div>
+              <div
+                className={`mt-1 text-2xl font-semibold ${
+                  isRaining(observation.precip)
+                    ? "text-sky-300"
+                    : "text-slate-300"
+                }`}
+              >
+                {fmt(observation.precip, "mm/h")}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-3 rounded-md border border-sky-900/80 bg-sky-950/30 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">
+                気象予測
+              </h2>
+            </div>
+          </div>
+
+          {forecast?.forecasts.length ? (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {forecast.forecasts.map((point) => {
+                const probability = Math.round(point.rain_probability * 100);
+                return (
+                  <div
+                    key={point.hours}
+                    className="rounded border border-slate-800 bg-slate-950/80 p-2.5"
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs font-semibold text-sky-300">
+                        {point.hours}時間後
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-end justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] text-slate-500">予想気温</div>
+                        <div className="text-lg font-semibold text-orange-300">
+                          {point.temperature.toFixed(1)}
+                          <span className="ml-0.5 text-xs">℃</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-slate-500">降水確率</div>
+                        <div className="text-lg font-semibold text-sky-300">
+                          {probability}
+                          <span className="ml-0.5 text-xs">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : forecastLoading ? (
+            <div className="flex h-24 items-center justify-center text-xs text-slate-400">
+              予測を計算中…
+            </div>
+          ) : forecastError ? (
+            <div className="mt-3 rounded bg-slate-950/70 px-3 py-4 text-center text-xs text-amber-300">
+              {forecastError}
+            </div>
+          ) : (
+            <div className="mt-3 rounded bg-slate-950/70 px-3 py-4 text-center text-xs text-slate-500">
+              予測データがありません
+            </div>
+          )}
+        </section>
+
+        <section className="mt-3 rounded-md border border-slate-800 bg-slate-900/60 p-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-slate-100">降水推移</h2>
             <span className="text-xs text-slate-400">

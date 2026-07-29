@@ -49,3 +49,17 @@ export interface WeatherPayload {
   wettest: Wettest | null;
   observations: Observation[];
 }
+
+export interface ForecastPoint {
+  hours: 1 | 6 | 12 | 24;
+  datetime: string;
+  temperature: number;
+  rain_probability: number;
+}
+
+export interface StationForecast {
+  station_id: string;
+  based_at: string;
+  model: "LightGBM";
+  forecasts: ForecastPoint[];
+}

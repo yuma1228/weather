@@ -3,6 +3,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 RUNTIME_DATA_DIR = DATA_DIR / "runtime"
+ML_DIR = BASE_DIR / "ml"
+MODELS_DIR = ML_DIR / "models"
+FORECAST_STATIONS_CSV = DATA_DIR / "stations_amedas.csv"
 
 # --- 仮想時計(server.py) --------------------------------------------------
 STEP_INTERVAL_SEC = 1

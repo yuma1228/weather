@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
@@ -320,6 +320,29 @@ def get_window(hours: int = HISTORY_MAX) -> dict:
         "hours": hours,
         "points": poller.window_points(hours),
     }
+
+
+@app.get("/forecast")
+def get_forecast(
+    station_id: str,
+    at: str | None = Query(default=None, alias="datetime"),
+) -> dict:
+    params = {"station_id": station_id}
+    if at is not None:
+        params["datetime"] = at
+    try:
+        with requests.Session() as session:
+            session.trust_env = False
+            response = session.get(f"{SOURCE}/forecast", params=params, timeout=30)
+    except requests.RequestException as ex:
+        raise HTTPException(status_code=503, detail="予測APIに接続できません") from ex
+    if not response.ok:
+        try:
+            detail = response.json().get("detail", "予測を取得できません")
+        except (ValueError, AttributeError):
+            detail = "予測を取得できません"
+        raise HTTPException(status_code=response.status_code, detail=detail)
+    return response.json()
 
 
 @app.get("/stream")

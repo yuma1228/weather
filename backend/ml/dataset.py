@@ -13,19 +13,47 @@ TEST_START = "2025-01-01 00:00:00"
 TEST_END = "2025-12-31 23:00:00"
 
 
-def _load_pivots(obs_csv, nrows=None):
-    df = pd.read_csv(
+CHUNK = 5_000_000
+
+
+def _read(obs_csv, cols, nrows):
+    return pd.read_csv(
         obs_csv,
         encoding="utf-8-sig",  # ヘッダBOM対策（先頭列が ﻿datetime になるのを防ぐ）
-        usecols=["datetime", "station_id"] + VARS,
-        dtype={"station_id": "string", **{v: "float32" for v in VARS}},
+        usecols=["datetime", "station_id"] + cols,
+        # station_id は category（1億行を "string" で持つと文字列だけで数GB食う）
+        dtype={"station_id": "category", **{v: "float32" for v in cols}},
         parse_dates=["datetime"],
         nrows=nrows,
+        chunksize=CHUNK,
     )
-    pivots = {v: df.pivot(index="datetime", columns="station_id", values=v) for v in VARS}
-    cols = pivots["temp"].columns
-    full_idx = pd.date_range(pivots["temp"].index.min(), pivots["temp"].index.max(), freq="h")
-    return {v: pivots[v].reindex(index=full_idx, columns=cols) for v in VARS}, full_idx, cols
+
+
+def _load_pivots(obs_csv, nrows=None):
+    # 1億行を一括ロードして pivot するとメモリが持たない（pandas hashtable でOOM死）ので、
+    # 1パス目で軸だけ確定 → 2パス目でチャンクごとに事前確保した配列へ直接書き込む。
+    tmin = tmax = None
+    sids = set()
+    for ch in _read(obs_csv, [], nrows):
+        lo, hi = ch["datetime"].min(), ch["datetime"].max()
+        tmin = lo if tmin is None else min(tmin, lo)
+        tmax = hi if tmax is None else max(tmax, hi)
+        sids.update(ch["station_id"].cat.categories)
+
+    cols = pd.Index(sorted(sids), name="station_id")
+    full_idx = pd.date_range(tmin, tmax, freq="h")
+    arrs = {v: np.full((len(full_idx), len(cols)), np.nan, np.float32) for v in VARS}
+
+    for ch in _read(obs_csv, VARS, nrows):
+        r = ((ch["datetime"] - full_idx[0]) // pd.Timedelta("1h")).to_numpy(np.int64)
+        c = pd.Categorical(ch["station_id"], categories=cols).codes
+        ok = c >= 0
+        r, c = r[ok], c[ok]
+        for v in VARS:
+            arrs[v][r, c] = ch[v].to_numpy(np.float32)[ok]
+
+    pivots = {v: pd.DataFrame(arrs[v], index=full_idx, columns=cols) for v in VARS}
+    return pivots, full_idx, cols
 
 
 def _valid_positions(pivots):
@@ -34,7 +62,7 @@ def _valid_positions(pivots):
     for h in HORIZONS:
         valid &= tp.shift(-h).notna() & pp.shift(-h).notna()
     r, c = np.where(valid.to_numpy())
-    return r.astype(np.int64), c.astype(np.int64)
+    return r.astype(np.int32), c.astype(np.int32)  # 有効位置は数千万個、int64だとこれだけでGB級
 
 
 def _feature_names(k):

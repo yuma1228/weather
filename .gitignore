@@ -6,6 +6,11 @@ __pycache__/
 .eggs/
 build/
 dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # ---- 仮想環境 ----
 .venv/
@@ -44,3 +49,11 @@ yarn-error.log*
 backend/data/*.csv
 backend/data/.download_parts_v1/
 backend/data/runtime/
+
+# ---- 機械学習の一時生成物 ----
+# アプリが使う backend/ml/models/*.txt と metrics.json は実行資産としてコミットする。
+backend/ml/.cache/
+backend/ml/checkpoints/
+backend/ml/runs/
+backend/ml/models/*.tmp
+backend/ml/*.log
