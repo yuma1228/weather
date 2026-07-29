@@ -57,3 +57,6 @@ backend/ml/checkpoints/
 backend/ml/runs/
 backend/ml/models/*.tmp
 backend/ml/*.log
+
+# ---- Documentation ----
+docs/

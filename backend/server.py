@@ -3,12 +3,11 @@ import glob
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
 from data.build_runtime_data import latest_timestamp
-from ml.inference import ForecastService, ForecastUnavailable
 
 
 NUMERIC_FIELDS = {
@@ -105,15 +104,6 @@ class WeatherData:
             out.append(merged)
         return out
 
-    def observation(self, t: str, station_id: str) -> dict | None:
-        for row in self.obs_by_time.get(t, []):
-            if row["station_id"] == station_id:
-                merged = dict(row)
-                merged.update(self.station_meta(station_id))
-                return merged
-        return None
-
-
 class VirtualClock:
 
     def __init__(self, times, step_interval_sec, loop, start_index):
@@ -151,10 +141,6 @@ data = WeatherData()
 clock = VirtualClock(
     data.times, config.STEP_INTERVAL_SEC, config.LOOP, config.START_INDEX,
 )
-forecaster = ForecastService(
-    stations_csv=config.FORECAST_STATIONS_CSV,
-    models_dir=config.MODELS_DIR,
-)
 
 @app.get("/clock")
 def get_clock():
@@ -167,28 +153,6 @@ def get_now(station_id: str | None = None):
     t = st["datetime"]
     snap = data.snapshot(t, station_id) if t else []
     return {"datetime": t, "observations": snap}
-
-
-@app.get("/forecast")
-def get_forecast(
-    station_id: str,
-    at: str | None = Query(default=None, alias="datetime"),
-):
-    based_at = at or clock.state()["datetime"]
-    if based_at is None or based_at not in data.obs_by_time:
-        raise HTTPException(status_code=404, detail="指定時刻の観測データがありません")
-    station = data.observation(based_at, station_id)
-    if station is None:
-        raise HTTPException(status_code=404, detail="指定地点の観測データがありません")
-    try:
-        return forecaster.predict(
-            station_id=station_id,
-            based_at_text=based_at,
-            station=station,
-            observation_at=data.observation,
-        )
-    except ForecastUnavailable as ex:
-        raise HTTPException(status_code=422, detail=str(ex)) from ex
 
 
 if __name__ == "__main__":

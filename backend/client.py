@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 import uvicorn
 
 import config
+from ml.inference import ForecastService, ForecastUnavailable
 
 
 SOURCE = config.SOURCE
@@ -176,6 +177,7 @@ class Poller:
                             o["station_id"]: {
                                 "temp": o.get("temp"),
                                 "precip": o.get("precip"),
+                                "wind_speed": o.get("wind_speed"),
                             }
                             for o in payload["observations"]
                         }
@@ -195,6 +197,50 @@ class Poller:
     def snapshot(self) -> tuple[dict | None, int]:
         with self._lock:
             return self._payload, self._version
+
+    def forecast_context(
+        self,
+        station_id: str,
+        requested_at: str | None,
+    ) -> tuple[str, dict, dict[str, dict[str, dict[str, float | None]]]]:
+        """Copy the current forecast inputs without holding the lock during inference.
+
+        The history buffer starts empty. Missing timestamps from the first 24
+        frames are intentionally absent here and become NaN in ForecastService.
+        """
+        with self._lock:
+            payload = self._payload
+            entries = list(self._history)
+        if payload is None:
+            raise ForecastUnavailable("観測データを受信するまで予測できません")
+
+        based_at = requested_at or payload.get("datetime")
+        if not based_at:
+            raise ForecastUnavailable("予測基準時刻がありません")
+
+        observations_by_time = {
+            dt.strftime(DT_FMT): metrics for dt, metrics in entries
+        }
+        base_metrics = observations_by_time.get(based_at)
+        if base_metrics is None:
+            raise ForecastUnavailable("指定時刻が24フレームの履歴にありません")
+        base_station = base_metrics.get(station_id)
+        if base_station is None:
+            raise ForecastUnavailable("指定地点の観測データがありません")
+
+        station_meta = next(
+            (
+                observation
+                for observation in payload["observations"]
+                if observation["station_id"] == station_id
+            ),
+            None,
+        )
+        if station_meta is None:
+            raise ForecastUnavailable("指定地点の地点情報がありません")
+
+        station = {**station_meta, **base_station}
+        return based_at, station, observations_by_time
 
     def history_avg(self, station_id: str, field: str, hours: int) -> float | None:
         with self._lock:
@@ -274,6 +320,10 @@ class Poller:
 
 
 poller = Poller()
+forecaster = ForecastService(
+    stations_csv=config.FORECAST_STATIONS_CSV,
+    models_dir=config.MODELS_DIR,
+)
 
 
 @asynccontextmanager
@@ -285,7 +335,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Weather Processing Layer",
-    description="WBGT加工 + SSE配信",
+    description="WBGT加工 + 気象予測 + SSE配信",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -327,22 +377,21 @@ def get_forecast(
     station_id: str,
     at: str | None = Query(default=None, alias="datetime"),
 ) -> dict:
-    params = {"station_id": station_id}
-    if at is not None:
-        params["datetime"] = at
     try:
-        with requests.Session() as session:
-            session.trust_env = False
-            response = session.get(f"{SOURCE}/forecast", params=params, timeout=30)
-    except requests.RequestException as ex:
-        raise HTTPException(status_code=503, detail="予測APIに接続できません") from ex
-    if not response.ok:
-        try:
-            detail = response.json().get("detail", "予測を取得できません")
-        except (ValueError, AttributeError):
-            detail = "予測を取得できません"
-        raise HTTPException(status_code=response.status_code, detail=detail)
-    return response.json()
+        based_at, station, observations_by_time = poller.forecast_context(
+            station_id=station_id,
+            requested_at=at,
+        )
+        return forecaster.predict(
+            station_id=station_id,
+            based_at_text=based_at,
+            station=station,
+            observation_at=lambda timestamp, sid: observations_by_time.get(
+                timestamp, {}
+            ).get(sid),
+        )
+    except ForecastUnavailable as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
 
 
 @app.get("/stream")
