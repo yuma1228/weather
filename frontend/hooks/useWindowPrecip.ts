@@ -8,7 +8,7 @@ export interface WindowPoint {
   name: string;
   region: string;
   temp: number;
-  precip_sum: number;
+  precip_avg: number;
 }
 
 export function useWindowPrecip(

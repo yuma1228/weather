@@ -30,7 +30,7 @@ export default function RainScatter({ datetime, windowHours }: Props) {
     <aside className="hidden w-[360px] shrink-0 flex-col border-r border-slate-700 bg-slate-900 sm:flex">
       <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
         <div className="text-[13px] font-semibold text-slate-100">
-          気温 × 直近{windowHours}h降水量
+          気温 × 直近{windowHours}h平均降水量
         </div>
         <div className="text-[11px] text-slate-400">
           {stale ? "更新待ち" : `${points.length}地点`}

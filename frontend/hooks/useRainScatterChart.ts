@@ -23,8 +23,8 @@ function toSeries(points: WindowPoint[]) {
   for (const point of points) {
     byRegion.get(point.region)?.push([
       point.temp,
-      Math.max(point.precip_sum, PRECIP_FLOOR),
-      point.precip_sum,
+      Math.max(point.precip_avg, PRECIP_FLOOR),
+      point.precip_avg,
       point.name,
     ]);
   }
@@ -77,11 +77,11 @@ export function useRainScatterChart(points: WindowPoint[], enabled: boolean) {
       },
       yAxis: {
         type: "log",
-        name: "積算降水量 (mm)",
+        name: "平均降水量 (mm/h)",
         nameLocation: "middle",
         nameGap: 34,
         min: PRECIP_FLOOR,
-        max: 1000,
+        max: 100,
         axisLabel: {
           formatter: (value: number) =>
             value <= PRECIP_FLOOR ? "0" : String(value),
@@ -91,7 +91,7 @@ export function useRainScatterChart(points: WindowPoint[], enabled: boolean) {
       tooltip: {
         trigger: "item",
         formatter: (params: { data: Datum; seriesName: string }) =>
-          `${params.data[3]}（${params.seriesName}）<br/>${params.data[0]}℃ / ${params.data[2]}mm`,
+          `${params.data[3]}（${params.seriesName}）<br/>${params.data[0]}℃ / ${params.data[2]}mm/h`,
       },
       series: toSeries(pointsRef.current),
     });

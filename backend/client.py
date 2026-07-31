@@ -269,6 +269,7 @@ class Poller:
             return []
 
         sums: dict[str, float] = {}
+        counts: dict[str, int] = {}
         if entries:
             end = entries[-1][0]
             cutoff = end - timedelta(hours=hours)
@@ -279,6 +280,7 @@ class Poller:
                     precip = station.get("precip")
                     if precip is not None:
                         sums[sid] = sums.get(sid, 0.0) + precip
+                        counts[sid] = counts.get(sid, 0) + 1
 
         points = []
         for o in payload["observations"]:
@@ -291,7 +293,9 @@ class Poller:
                 "name": o["name"],
                 "region": region,
                 "temp": o["temp"],
-                "precip_sum": round(sums.get(o["station_id"], 0.0), 1),
+                "precip_avg": round(
+                    sums[o["station_id"]] / counts[o["station_id"]], 1
+                ) if counts.get(o["station_id"]) else 0.0,
             })
         return points
 
