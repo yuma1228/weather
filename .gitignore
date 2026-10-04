@@ -43,11 +43,26 @@ yarn-error.log*
 .env
 .env*.local
 
+# ---- Terraform ----
+# .terraform/ はダウンロードしたプロバイダのバイナリ(AWS は展開後 805MB)。
+# .terraform.lock.hcl はプロバイダのバージョンを固定するので「コミットする」。
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+*.tfplan
+# 認証情報や環境固有の値が入りうるため除外する
+*.auto.tfvars
+terraform.tfvars
+tf-debug.log
+crash.log
+crash.*.log
+*.tfvars.json
+override.tf
+*_override.tf
+
 
 # ---- 生成される観測データ(スクリプト実行で再取得できるためコミットしない) ----
-# 観測値は巨大なので除外する。
-# 地点マスタ(stations*.csv)は Lambda の推論に必須の実行資産なのでコミットする
-# (ml/models/*.txt と同じ扱い)。
 backend/data/observations*.csv
 backend/data/.download_parts_v1/
 backend/data/runtime/
@@ -61,8 +76,7 @@ backend/ml/models/*.tmp
 backend/ml/*.log
 
 # ---- Documentation ----
-# 卒研の成果物(final_report.pdf / 画像 / 発表資料 計4.4MB)はコミットしない。
-# 設計書(docs/superpowers/)だけ追跡する。
-# "docs/" ではなく "docs/*" にすることで、git がディレクトリを降りて下の否定を評価できる。
 docs/*
 !docs/superpowers/
+
+
