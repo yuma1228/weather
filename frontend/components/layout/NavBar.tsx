@@ -15,12 +15,7 @@ export default function NavBar() {
 
   return (
 <nav className="border-b border-slate-700 bg-slate-950 px-4">
-  {/* 上段: タイトル */}
-  <div className="py-2">
-    <span className="text-sm font-bold text-slate-300">気象モニタ</span>
-  </div>
-  
-  {/* 下段: リンクと日時 */}
+
   <div className="flex items-center gap-1 py-2">
     {LINKS.map((l) => {
       const active = pathname === l.href;
