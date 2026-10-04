@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  createElement,
   useContext,
   useEffect,
   useState,
@@ -16,9 +15,18 @@ export interface WeatherStream {
   connected: boolean;
 }
 
-const WeatherStreamContext = createContext<WeatherStream | null>(null);
+// context はこのファイルの外に出さない。触れるのは下の Provider と useWeatherStream だけ。
+// 初期値は SSE の初回フレームが届く前の実状態そのものなので、null を置く必要がない。
+const WeatherStreamContext = createContext<WeatherStream>({
+  payload: null,
+  connected: false,
+});
 
-function useWeatherStreamSource(): WeatherStream {
+export default function WeatherStreamProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [payload, setPayload] = useState<WeatherPayload | null>(null);
   const [connected, setConnected] = useState(false);
 
@@ -36,19 +44,12 @@ function useWeatherStreamSource(): WeatherStream {
     return () => es.close();
   }, []);
 
-  return { payload, connected };
-}
-
-export function WeatherStreamProvider({ children }: { children: ReactNode }) {
-  const value = useWeatherStreamSource();
-  return createElement(WeatherStreamContext.Provider, { value }, children);
+  return (
+    <WeatherStreamContext.Provider value={{ payload, connected }}>
+      {children}
+    </WeatherStreamContext.Provider>
+  );
 }
 
 // どのページからでも import して使える共有ストリーム。
-export function useWeatherStream(): WeatherStream {
-  const value = useContext(WeatherStreamContext);
-  if (!value) {
-    throw new Error("useWeatherStream must be used inside WeatherStreamProvider");
-  }
-  return value;
-}
+export const useWeatherStream = () => useContext(WeatherStreamContext);

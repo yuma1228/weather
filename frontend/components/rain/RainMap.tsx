@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import BaseMap from "../common/BaseMap";
-import { useWeatherStream } from "../../hooks/useWeatherStream";
+import { useWeatherStream } from "../../providers/WeatherStreamProvider";
 import RainHeader from "./RainHeader";
 import RainMarkers from "./RainMarkers";
 import RainStationDashboard from "./RainStationDashboard";

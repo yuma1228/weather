@@ -3,7 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import NavBar from "../components/layout/NavBar";
-import { WeatherStreamProvider } from "../hooks/useWeatherStream";
+import WeatherStreamProvider from "../providers/WeatherStreamProvider";
 
 export const metadata: Metadata = {
   title: "気象モニタ( 雨雲レーダー)",

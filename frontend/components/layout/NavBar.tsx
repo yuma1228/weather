@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useWeatherStream } from "../../hooks/useWeatherStream";
+import { useWeatherStream } from "../../providers/WeatherStreamProvider";
 
 const LINKS = [
   { href: "/rain", label: "雨雲レーダー" },
