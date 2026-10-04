@@ -45,8 +45,10 @@ yarn-error.log*
 
 
 # ---- 生成される観測データ(スクリプト実行で再取得できるためコミットしない) ----
-# 官署・アメダス両方(observations*.csv / stations*.csv)を対象にする
-backend/data/*.csv
+# 観測値は巨大なので除外する。
+# 地点マスタ(stations*.csv)は Lambda の推論に必須の実行資産なのでコミットする
+# (ml/models/*.txt と同じ扱い)。
+backend/data/observations*.csv
 backend/data/.download_parts_v1/
 backend/data/runtime/
 
@@ -59,4 +61,8 @@ backend/ml/models/*.tmp
 backend/ml/*.log
 
 # ---- Documentation ----
-docs/
+# 卒研の成果物(final_report.pdf / 画像 / 発表資料 計4.4MB)はコミットしない。
+# 設計書(docs/superpowers/)だけ追跡する。
+# "docs/" ではなく "docs/*" にすることで、git がディレクトリを降りて下の否定を評価できる。
+docs/*
+!docs/superpowers/
