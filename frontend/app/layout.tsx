@@ -6,8 +6,8 @@ import NavBar from "../components/layout/NavBar";
 import { WeatherStreamProvider } from "../hooks/useWeatherStream";
 
 export const metadata: Metadata = {
-  title: "気象モニタ(熱中症リスク / 雨雲レーダー)",
-  description: "WBGT と降水量のリアルタイム可視化",
+  title: "気象モニタ( 雨雲レーダー)",
+  description: "降水量のリアルタイム可視化",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

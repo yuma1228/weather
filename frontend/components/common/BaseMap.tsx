@@ -9,8 +9,9 @@ export default function BaseMap({ children }: { children?: ReactNode }) {
   return (
     <MapContainer center={[37.5, 137]} zoom={5} preferCanvas style={{ height: "100%" }}>
       <TileLayer
+        // CARTO はキー必須(未設定だとタイルに透かしが出る)。キーは frontend/.env.local に置く
         attribution="&copy; OpenStreetMap, &copy; CARTO"
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url={`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_CARTO_KEY}`}
       />
       {children}
     </MapContainer>
