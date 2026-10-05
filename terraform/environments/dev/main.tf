@@ -1,4 +1,7 @@
-# --- モジュール呼び出し ---
-# モジュールは「2回以上使う」か「配線が複雑」な場合だけ作る。
-# 現時点では該当なし。まず resource を素で書いて動かし、
-# Lambda W/R のように同じ形が2回必要になった時点で modules/ へ切り出す。
+module "s3" {
+  source             = "../../modules/s3"
+  project            = var.project
+  environment        = var.environment
+  bucket_name        = var.bucket_name
+  versioning_enabled = var.versioning_enabled
+}
