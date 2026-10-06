@@ -26,11 +26,10 @@ variable "allowed_account_id" {
 // S3 
 variable "bucket_name" {
   type    = string
-  default = "weather-data"
+  default = "data"
 }
 
 variable "versioning_enabled" {
   type    = bool
   default = true
 }
-
