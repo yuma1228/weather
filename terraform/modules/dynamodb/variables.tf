@@ -1,53 +1,31 @@
 variable "project" {
-  type    = string
-  default = "weather"
+  type = string
 }
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  type = string
 }
 
-variable "region" {
-  type    = string
-  default = "ap-northeast-1"
-}
-
-variable "allowed_account_id" {
-  type        = string
-  description = "apply を許可する AWS アカウントID。public リポジトリに置かないため tfvars で渡す。"
-}
-
-// S3 
-variable "bucket_name" {
-  type    = string
-  default = "data"
-}
-
-variable "versioning_enabled" {
-  type    = bool
-  default = true
-}
-
-// DynamoDB
 variable "table_name" {
-  type    = string
-  default = "weather-data"
+  type = string
 }
 
 variable "billing_mode" {
   type    = string
   default = "PROVISIONED"
+
+  validation {
+    condition     = contains(["PROVISIONED", "PAY_PER_REQUEST"], var.billing_mode)
+    error_message = "Invalid billing mode. Valid values are PROVISIONED or PAY_PER_REQUEST."
+  }
 }
 
 variable "hash_key" {
-  type    = string
-  default = "station_id"
+  type = string
 }
 
 variable "range_key" {
-  type    = string
-  default = "datetime"
+  type = string
 }
 
 variable "read_capacity" {

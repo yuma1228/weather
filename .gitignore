@@ -51,10 +51,14 @@ yarn-error.log*
 *.tfstate
 *.tfstate.*
 *.tfplan
+# plan の出力はバイナリだが中身は平文の state 差分(アカウントID/ARN等)が入る
+plan.out
+*.plan
 # 認証情報や環境固有の値が入りうるため除外する
 *.auto.tfvars
 terraform.tfvars
 tf-debug.log
+tf.log
 crash.log
 crash.*.log
 *.tfvars.json
