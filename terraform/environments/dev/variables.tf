@@ -1,6 +1,6 @@
 variable "project" {
   type    = string
-  default = "weather"
+  default = "raincast"
 }
 
 variable "environment" {

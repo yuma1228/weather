@@ -84,6 +84,24 @@ resource "aws_iam_role_policy" "gh_terraform_main" {
         ]
         Resource = "*"
       },
+      {
+        Sid    = "ProjectIam"
+        Effect = "Allow"
+        Action = ["iam:*"]
+        Resource = [
+          "arn:aws:iam::${var.allowed_account_id}:role/${var.project}-${var.environment}-*",
+          "arn:aws:iam::${var.allowed_account_id}:policy/${var.project}-${var.environment}-*",
+        ]
+      },
+      {
+        Sid      = "PassRoleToLambda"
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = "arn:aws:iam::${var.allowed_account_id}:role/${var.project}-${var.environment}-*"
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" }
+        }
+      }
     ]
   })
 }

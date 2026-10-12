@@ -8,22 +8,25 @@ terraform {
     }
   }
 
+  # environments/* とは別の state にする。
   backend "s3" {
     bucket       = "raincast-tfstate"
-    key          = "global/terraform.tfstate"   
+    key          = "global/terraform.tfstate"
     region       = "ap-northeast-1"
     encrypt      = true
     use_lockfile = true
   }
 }
 
+# region: IAM はグローバルサービスなので何を指定しても結果が変わらない。変数にしない。
+# Project / Scope: global 層では固定値。変数にすると environments 側と重複する。
 provider "aws" {
-  region              = var.region
+  region              = "ap-northeast-1"
   allowed_account_ids = [var.allowed_account_id]
 
   default_tags {
     tags = {
-      Project   = var.project
+      Project   = "raincast"
       Scope     = "global"
       ManagedBy = "Terraform"
     }

@@ -1,16 +1,20 @@
+name: Terraform
 on:
   pull_request:
     paths:
-      - 'terraform/**'
+      - 'terraform/environments/dev/**'
+      - 'terraform/modules/**'
       - '.github/workflows/terraform.yml'
+
   push:
     branches: [main]
     paths:
-      - 'terraform/**'
+      - 'terraform/environments/dev/**'
+      - 'terraform/modules/**'
       - '.github/workflows/terraform.yml'
 
 permissions:
-  id-token: write          # OIDC トークン発行に必須。無いと assume が失敗する
+  id-token: write # OIDC トークン発行に必須。無いと assume が失敗する
   contents: read
 
 concurrency: terraform-dev # 同時実行すると state ロックで衝突する
@@ -23,7 +27,6 @@ jobs:
         working-directory: terraform/environments/dev
     env:
       TF_VAR_allowed_account_id: ${{ secrets.ALLOWED_ACCOUNT_ID }}
-      TF_VAR_region: ${{ secrets.AWS_REGION }}
       TF_IN_AUTOMATION: 1
 
     steps:
@@ -32,11 +35,11 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ github.event_name == 'pull_request' && secrets.AWS_ROLE_PR_ARN || secrets.AWS_ROLE_MAIN_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ap-northeast-1
 
       - uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.16.5 
+          terraform_version: 1.16.5
           terraform_wrapper: false
 
       - run: terraform fmt -check -recursive ../..
