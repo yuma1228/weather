@@ -43,10 +43,31 @@ yarn-error.log*
 .env
 .env*.local
 
+# ---- Terraform ----
+# .terraform/ はダウンロードしたプロバイダのバイナリ(AWS は展開後 805MB)。
+# .terraform.lock.hcl はプロバイダのバージョンを固定するので「コミットする」。
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+*.tfplan
+# plan の出力はバイナリだが中身は平文の state 差分(アカウントID/ARN等)が入る
+plan.out
+*.plan
+# 認証情報や環境固有の値が入りうるため除外する
+*.auto.tfvars
+terraform.tfvars
+tf-debug.log
+tf.log
+crash.log
+crash.*.log
+*.tfvars.json
+override.tf
+*_override.tf
+
 
 # ---- 生成される観測データ(スクリプト実行で再取得できるためコミットしない) ----
-# 官署・アメダス両方(observations*.csv / stations*.csv)を対象にする
-backend/data/*.csv
+backend/data/observations*.csv
 backend/data/.download_parts_v1/
 backend/data/runtime/
 
@@ -59,4 +80,7 @@ backend/ml/models/*.tmp
 backend/ml/*.log
 
 # ---- Documentation ----
-docs/
+docs/*
+!docs/superpowers/
+
+
