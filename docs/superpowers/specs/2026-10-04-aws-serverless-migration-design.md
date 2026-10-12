@@ -593,24 +593,51 @@ Function URL は認証なしで公開するため、入力を検証する。
 
 ## 10. Terraform 構成
 
+環境とモジュールを分ける、Terraform の標準的な構成を採る。
+
 ```
-infra/
-├─ main.tf              provider / backend (S3 + DynamoDB ロック)
-├─ s3_data.tf           データバケット（prevent_destroy）
-├─ s3_frontend.tf       フロントバケット（OAC のみ許可）
-├─ cloudfront.tf        ディストリビューション + OAC + キャッシュポリシー
-├─ dynamodb.tf          観測テーブル（プロビジョンド 25/25 / prevent_destroy）
-├─ lambda_write.tf      Lambda W（zip / EventBridge Scheduler）
-├─ lambda_read.tf       Lambda R（zip / Function URL / CORS）
-├─ iam_lambda.tf        各 Lambda の実行ロール（権限を分ける）
-├─ iam_github.tf        GitHub OIDC プロバイダ + 2つのロール
-├─ monitoring.tf        CloudWatch アラーム + SNS + AWS Budgets（月額 $1 で通知）
-└─ variables.tf
+terraform/
+├─ environments/
+│  └─ dev/
+│     ├─ versions.tf        required_version / provider / backend
+│     ├─ main.tf            モジュールの呼び出しのみ
+│     ├─ variables.tf
+│     ├─ outputs.tf
+│     ├─ iam_github.tf      GitHub OIDC プロバイダ + CI 用ロール2つ
+│     └─ terraform.tfvars   アカウントIDなど（gitignore / コミットしない）
+└─ modules/
+   ├─ s3/                   データバケット / フロントバケット
+   ├─ dynamodb/             観測テーブル
+   ├─ lambda/               Lambda 関数 + 実行ロール + スケジュール
+   ├─ cloudfront/           ディストリビューション + OAC + キャッシュポリシー
+   └─ monitoring/           CloudWatch アラーム + SNS + AWS Budgets
 ```
 
-リージョンは `ap-northeast-1`。**ECR は作成しない。**
+各モジュールは `main.tf` / `variables.tf` / `outputs.tf` / `versions.tf` の4ファイルで構成する。リージョンは `ap-northeast-1`。**ECR は作成しない。**
 
-### 10.1 Lambda の実行ロールを分ける
+### 10.1 構成のルール
+
+この4つを守る。崩すと環境を増やしたときに破綻する。
+
+| ルール | 理由 |
+|---|---|
+| **モジュールに `provider` ブロックを書かない** | `required_providers` のみ書く。provider の設定は環境側が持ち、モジュールは継承する。モジュールが provider を持つと呼び出し側から差し替えられない |
+| **モジュールに `backend` を書かない** | state は環境ごとに1つ。backend は `environments/*/versions.tf` だけが持つ |
+| **リソース名は `${project}-${environment}-${name}`** | 環境を増やしたときに名前が衝突しない。モジュール側で組み立て、`project` と `environment` を引数で受ける |
+| **共通タグは `default_tags` で一括付与** | 環境側の `provider` ブロックで `Project` / `Environment` / `ManagedBy` を付ける。モジュールごとに `tags` 変数を持たせない（二重管理になる） |
+
+`environments/dev/main.tf` はモジュールの呼び出しだけを書き、`resource` を直接書かない。例外は `iam_github.tf`（10.4節）。
+
+### 10.2 バージョン固定
+
+| 対象 | 方法 |
+|---|---|
+| Terraform 本体 | `required_version` を全ファイルで同一の完全固定（例 `"1.16.5"`） |
+| AWS プロバイダ | `.terraform.lock.hcl` をコミット。hash 単位で固定される |
+
+`required_version` を完全固定にすると、ローカルと CI の Terraform が必ず同じ版になり「手元では通るのに CI で落ちる」が起きない。**その代わり、版を上げるときは `environments/*/versions.tf`・`modules/*/versions.tf`・`.github/workflows/terraform.yml` の `terraform_version` を同時に変える。** 固定した版を全員が入れる前提になるので、人が増えたら `">= 1.16"` に緩める判断もありうる。
+
+### 10.3 Lambda の実行ロールを分ける
 
 | Lambda | 必要な権限 |
 |---|---|
@@ -619,7 +646,18 @@ infra/
 
 **読み出し Lambda に書き込み権限を与えない。** Function URL で公開する面であり、攻撃対象になる。
 
-### 10.2 データ保護
+実行ロールは `modules/lambda/` に関数と一緒に置く。関数とロールは1対1で、別々に再利用することがないため、モジュールを分けない。
+
+### 10.4 GitHub OIDC はモジュール化しない
+
+`iam_github.tf` は `environments/dev/` に直接置く。理由:
+
+- OIDC プロバイダ（`aws_iam_openid_connect_provider`）は**アカウントに1つしか作れない**。モジュール化して複数環境から呼ぶと衝突する
+- 呼び出し元が1箇所しかない。実装が1つしかないモジュールは抽象化の意味がない
+
+将来 `environments/prod/` を追加する場合は、OIDC プロバイダを `dev` 側に置いたまま `data` ソースで参照するか、環境より上の層（`terraform/shared/`）に切り出す。その判断は prod を作る時点で行う。
+
+### 10.5 データ保護
 
 `terraform apply` を CI に任せるため、誤った変更でデータが消えない仕組みを入れる。
 
@@ -637,7 +675,9 @@ point_in_time_recovery { enabled = false }
 
 PITR を使わないため、`prevent_destroy` が唯一のデータ保護機構になる。DynamoDB テーブルとデータバケットの両方に必ず付ける。
 
-### 10.3 キャッシュ設定
+なお `deletion_protection_enabled`（DynamoDB の AWS 側の保護）は **dev では `false`** にする。`prevent_destroy` が Terraform 側で守るため二重になり、dev を作り直したいときに手動解除が必要になって邪魔になる。prod では `true`。
+
+### 10.6 キャッシュ設定
 
 | パス | TTL | 理由 |
 |---|---|---|
@@ -655,25 +695,63 @@ GitHub Actions + OIDC。長期のアクセスキーは置かない。
 
 ```
 .github/workflows/
-├─ terraform.yml   infra/**        PR → plan をコメント / main → apply
-├─ lambda.yml      backend/**      zip 作成 → 両 Lambda を更新
-└─ frontend.yml    frontend/**     next build → S3 sync → CF invalidation
+├─ terraform.yml   terraform/**   PR → plan / main → apply
+├─ lambda.yml      backend/**     zip 作成 → 両 Lambda を更新
+└─ frontend.yml    frontend/**    next build → S3 sync → CF invalidation
 ```
 
 `paths` フィルタで変更範囲に応じたワークフローのみを走らせる。
 
 **Docker ビルドが不要なため、`lambda.yml` は zip の作成と `update-function-code` のみで完結する。** 依存は `pip install -t` でディレクトリに展開して zip に固める。Lambda R は依存が無いため zip が数十KBで済む。
 
-### 11.1 IAM ロールを2つに分ける
+### 11.1 OIDC の初期導入（鶏卵問題）
+
+「Terraform で OIDC ロールを作る → そのロールで Terraform を動かす」は自己参照になる。次の順で解く。
+
+| | 手順 |
+|---|---|
+| 1 | `iam_github.tf` を書く |
+| 2 | **ローカルの認証情報（`AWS_PROFILE`）で1回だけ `terraform apply`** してロールを作る |
+| 3 | output のロール ARN を GitHub Secrets に登録する |
+| 4 | `terraform.yml` をコミットする。以降の apply は CI が行う |
+
+コンソールでの手作業は発生させない。ロールは初回から state に載るため、後から `import` する手間もない。
+
+信頼ポリシーの `sub` 条件でリポジトリを限定する。ここを緩めると**他人のリポジトリから assume できてしまう**ため、最低限 `repo:<owner>/<repo>:*` まで絞る。ブランチまで絞る場合は `repo:<owner>/<repo>:ref:refs/heads/main` と `repo:<owner>/<repo>:pull_request` の2つを許可する。
+
+`thumbprint_list` は空でよい。AWS 側が GitHub の OIDC 証明書を信頼済みであり、指紋の手動管理は不要になっている。
+
+### 11.2 IAM ロールを2つに分ける
 
 | ロール | 権限 | 使うワークフロー |
 |---|---|---|
 | `gh-actions-deploy` | Lambda 更新 / S3 sync / CF invalidation | `lambda.yml` `frontend.yml` |
-| `gh-actions-terraform` | インフラ管理に必要な広い権限 | `terraform.yml` |
+| `gh-actions-terraform` | インフラ管理に必要な広い権限 + tfstate バケットの読み書き | `terraform.yml` |
 
 デプロイ用の弱いロールとインフラ用の強いロールを分ける。デプロイのワークフローが侵害されてもインフラを壊せない。
 
-### 11.2 フロントのビルド時変数
+`gh-actions-terraform` には tfstate バケットへの `GetObject` / `PutObject` / `DeleteObject` / `ListBucket` が必要。backend は `use_lockfile = true`（S3 のネイティブロック）を使うため、**別途 DynamoDB のロックテーブルは作らない。** ロックファイルも同じバケット上に置かれるので、上記の権限で足りる。
+
+管理対象リソースの権限は、**最初から網羅しようとせず `AccessDenied` を見て足す**方針を採る。初回は本設計が使う範囲（`s3` / `dynamodb` / `iam` / `lambda` / `logs` / `cloudfront` / `scheduler` / `sns` / `budgets`）から始める。
+
+### 11.3 terraform.yml の設計
+
+| 項目 | 方針 | 理由 |
+|---|---|---|
+| トリガ | PR は `plan` まで、`main` への push で `apply` | PR 時点で apply すると、レビュー前の変更が本番に入る |
+| `permissions` | `id-token: write` と `contents: read` | `id-token: write` が無いと OIDC トークンが発行されず assume が失敗する |
+| `concurrency` | 環境ごとに1つ（`terraform-dev`） | 同時に2つ走ると S3 の state ロックで待たされるか失敗する |
+| ステップ順 | `fmt -check` → `init` → `validate` → `plan` → `apply` | 速くてよく落ちるものを先に置き、無駄な AWS 呼び出しを避ける |
+| `terraform_version` | `required_version` と同一の完全固定 | 10.2節 |
+| `allowed_account_id` | `TF_VAR_allowed_account_id` に Secrets から注入 | `terraform.tfvars` は gitignore されているため CI には存在しない |
+
+`init` に `-backend=false` は付けない。state が必要である。
+
+### 11.4 ワークフローを足す順番
+
+リソースが存在しない段階でワークフローを書いても動かせない。`terraform.yml` を先に1本だけ動かし、`lambda.yml` / `frontend.yml` は対象の Lambda・CloudFront が apply された後に追加する。`gh-actions-deploy` ロールも同じタイミングで足す。
+
+### 11.5 フロントのビルド時変数
 
 `NEXT_PUBLIC_CARTO_KEY` を GitHub Secrets から注入する。
 
@@ -743,12 +821,13 @@ useEffect(() => {
 | 1 | 事前準備（15節） |
 | 2 | 地点ID対応表の生成とテスト |
 | 3 | `inference.py` の pandas 除去 + `predict_all()` + 特徴量順序テスト |
-| 4 | Terraform の土台（S3 / DynamoDB / IAM / OIDC） |
-| 5 | Lambda W（書き込み）+ EventBridge |
-| 6 | DynamoDB と `history.json` の24時間分バックフィル |
-| 7 | Lambda R（読み出し）+ Function URL |
-| 8 | フロントの静的エクスポート + CloudFront 公開 |
-| 9 | CI/CD 3ワークフロー |
+| 4 | Terraform の土台（`modules/s3` / `modules/dynamodb`） |
+| 5 | GitHub OIDC + `terraform.yml` — 以降の apply を CI に移す（11.1節） |
+| 6 | Lambda W（書き込み）+ EventBridge Scheduler |
+| 7 | DynamoDB と `history.json` の24時間分バックフィル |
+| 8 | Lambda R（読み出し）+ Function URL |
+| 9 | フロントの静的エクスポート + CloudFront 公開 |
+| 10 | `lambda.yml` / `frontend.yml` + `gh-actions-deploy` ロール（11.4節） |
 
 ### 初回バックフィル
 
@@ -763,7 +842,7 @@ DynamoDB への書き込みは 24時刻 × 1286地点 = 30,864件になる。プ
 - **DynamoDB の保存量。** 約2.5年で無料枠 25GB に到達する。TTL 属性で古い10分データのみ削除し毎時データを残す、または S3 へアーカイブする方針を後日判断する
 - **バックアップ方針。** PITR を無効にしている（5.1.1節）。追記のみのテーブルであり `prevent_destroy` で保護されるため初期は不要と判断した。データが蓄積して価値が上がった時点で、S3 へのエクスポート（PITR の約 1/9 の単価）を検討する
 - **予測精度の可視化。** `forecast` 属性と実測が同じテーブルに揃うため、精度検証の画面を後から追加できる。本設計の範囲外とするが、データ構造はそれを前提にしている
-- **独自ドメインの導入（後日実施する方針を確定済み）。** Route53 のホストゾーン $0.50/月 + ドメイン代 年$12 程度。CloudFront のエイリアスレコードと ACM 証明書（CloudFront 用は `us-east-1` で発行する必要がある）を追加する。導入時は `cloudfront.tf` に `aliases` と `viewer_certificate` を足し、Lambda R の CORS 許可オリジン（8.1節）も新ドメインに差し替える
+- **独自ドメインの導入（後日実施する方針を確定済み）。** Route53 のホストゾーン $0.50/月 + ドメイン代 年$12 程度。CloudFront のエイリアスレコードと ACM 証明書（CloudFront 用は `us-east-1` で発行する必要がある）を追加する。導入時は `modules/cloudfront/` に `aliases` と `viewer_certificate` を足し、Lambda R の CORS 許可オリジン（8.1節）も新ドメインに差し替える
 
 ## 15. 事前準備（リポジトリ側）
 

@@ -8,8 +8,6 @@ terraform {
     }
   }
 
-  # backend は provider の設定を読まず、独自に認証情報を解決する。
-  # profile は書かない: ローカルは AWS_PROFILE 環境変数、CI は OIDC が環境変数で渡す。
   backend "s3" {
     bucket       = "raincast-tfstate"
     key          = "dev/terraform.tfstate"

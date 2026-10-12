@@ -18,6 +18,24 @@ variable "allowed_account_id" {
   description = "apply を許可する AWS アカウントID。public リポジトリに置かないため tfvars で渡す。"
 }
 
+// GitHub Actions
+variable "github_repo" {
+  type        = string
+  description = "OIDC で assume を許可するリポジトリ (owner/repo)"
+  default     = "yuma1228/weather"
+}
+
+variable "ci_branch" {
+  type        = string
+  description = "apply を許可するブランチ。main に統合したら main に変える"
+  default     = "main"
+}
+
+variable "tfstate_bucket" {
+  type        = string
+  description = "versions.tf の backend と同じバケット名"
+  default     = "raincast-tfstate"
+}
 // S3 
 variable "bucket_name" {
   type    = string
