@@ -102,3 +102,7 @@ variable "server_side_encryption_enabled" {
   type    = bool
   default = false
 }
+
+// Lambda
+// デフォルト値は modules/poll_weather_data_lambda/variables.tf に定義
+// 上書きが必要な場合のみここで定義して main.tf で渡す
