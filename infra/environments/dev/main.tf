@@ -22,3 +22,10 @@ module "dynamodb" {
   point_in_time_recovery_enabled = var.point_in_time_recovery_enabled
   server_side_encryption_enabled = var.server_side_encryption_enabled
 }
+
+module "poll_weather_data_lambda" {
+  source      = "../../modules/poll_weather_data_lambda"
+  project     = var.project
+  environment = var.environment
+}
+
