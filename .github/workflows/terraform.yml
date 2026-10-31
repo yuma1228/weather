@@ -2,15 +2,15 @@ name: Terraform
 on:
   pull_request:
     paths:
-      - 'terraform/environments/dev/**'
-      - 'terraform/modules/**'
+      - 'infra/environments/dev/**'
+      - 'infra/modules/**'
       - '.github/workflows/terraform.yml'
 
   push:
     branches: [main]
     paths:
-      - 'terraform/environments/dev/**'
-      - 'terraform/modules/**'
+      - 'infra/environments/dev/**'
+      - 'infra/modules/**'
       - '.github/workflows/terraform.yml'
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: terraform/environments/dev
+        working-directory: infra/environments/dev
     env:
       TF_VAR_allowed_account_id: ${{ secrets.ALLOWED_ACCOUNT_ID }}
       TF_IN_AUTOMATION: 1
