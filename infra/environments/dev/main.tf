@@ -23,9 +23,8 @@ module "dynamodb" {
   server_side_encryption_enabled = var.server_side_encryption_enabled
 }
 
-module "poll_weather_data_lambda" {
-  source      = "../../modules/poll_weather_data_lambda"
+module "poll_weather_data" {
+  source      = "../../modules/poll_weather_data"
   project     = var.project
   environment = var.environment
 }
-

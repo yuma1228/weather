@@ -49,3 +49,9 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+variable "schedule_expression" {
+  type    = string
+  default = "rate(10 minutes)"
+  description = "10 minutes ごとに実行"
+}
