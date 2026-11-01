@@ -22,26 +22,26 @@ variable "runtime" {
 }
 
 variable "timeout" {
-  type    = number
-  default = 120
+  type        = number
+  default     = 120
   description = "bosai API 取得 + 推論 + S3/DynamoDB 書き込みの余裕を持たせる"
 }
 
 variable "memory_size" {
-  type    = number
-  default = 1024
+  type        = number
+  default     = 1024
   description = "scipy + lightgbm のロードと推論に必要"
 }
 
 variable "architectures" {
-  type    = list(string)
-  default = ["x86_64"]
+  type        = list(string)
+  default     = ["x86_64"]
   description = "lightgbm の互換性のため x86_64 を使用"
 }
 
 variable "reserved_concurrent_executions" {
-  type    = number
-  default = -1
+  type        = number
+  default     = -1
   description = "-1 で制限なし。0 で停止"
 }
 
@@ -51,7 +51,7 @@ variable "log_retention_days" {
 }
 
 variable "schedule_expression" {
-  type    = string
-  default = "rate(10 minutes)"
+  type        = string
+  default     = "rate(10 minutes)"
   description = "10 minutes ごとに実行"
 }
