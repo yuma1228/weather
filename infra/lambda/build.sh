@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/../../backend/lambda/ingest/lib/poll_weather_data"
+cd "$(dirname "$0")/poll_weather_data"
 
 shopt -s nullglob
 py_files=( *.py )

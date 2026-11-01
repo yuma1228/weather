@@ -24,8 +24,8 @@ resource "aws_iam_role_policy_attachment" "basic" {
 resource "aws_lambda_function" "lambda" {
   function_name    = "${var.project}-${var.environment}-${var.function_name}-lambda"
   role             = aws_iam_role.lambda.arn
-  filename         = "${path.module}/../../../backend/lambda/ingest/lib/poll_weather_data/poll_weather_data.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../../backend/lambda/ingest/lib/poll_weather_data/poll_weather_data.zip")
+  filename         = "${path.module}/../../lambda/poll_weather_data/poll_weather_data.zip"
+  source_code_hash = filebase64sha256("${path.module}/../../lambda/poll_weather_data/poll_weather_data.zip")
   handler          = var.handler
   runtime          = var.runtime
   timeout          = var.timeout
