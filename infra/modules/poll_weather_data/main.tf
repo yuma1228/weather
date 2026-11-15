@@ -24,8 +24,8 @@ resource "aws_iam_role_policy_attachment" "basic" {
 resource "aws_lambda_function" "lambda" {
   function_name    = "${var.project}-${var.environment}-${var.function_name}-lambda"
   role             = aws_iam_role.lambda.arn
-  filename         = "${path.module}/../../lambda/poll_weather_data.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../lambda/poll_weather_data.zip")
+  filename         = "${path.module}/../../../backend/lambda/poll_weather_data/poll_weather_data.zip"
+  source_code_hash = filebase64sha256("${path.module}/../../../backend/lambda/poll_weather_data/poll_weather_data.zip")
   handler          = var.handler
   runtime          = var.runtime
   timeout          = var.timeout
@@ -34,6 +34,13 @@ resource "aws_lambda_function" "lambda" {
 
   reserved_concurrent_executions = var.reserved_concurrent_executions
 
+  environment {
+    variables = {
+      S3_BUCKET_NAME      = var.s3_bucket_name
+      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      TTL_DAYS            = var.ttl_days
+    }
+  }
 }
 
 # CloudWatch Logs のロググループ（保持期間を設定）
@@ -42,6 +49,26 @@ resource "aws_cloudwatch_log_group" "this" {
   retention_in_days = var.log_retention_days
 }
 
+# 権限設定
+resource "aws_iam_role_policy" "lambda_data_access" {
+  role = aws_iam_role.lambda.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${var.s3_bucket_arn}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Query"]
+        Resource = var.dynamodb_table_arn
+      },
+    ]
+  })
+}
 # event scheduler
 resource "aws_iam_role" "event_scheduler" {
   name = "${var.project}-${var.environment}-${var.function_name}-event-scheduler"
@@ -51,7 +78,7 @@ resource "aws_iam_role" "event_scheduler" {
     Statement = [{
       Effect    = "Allow"
       Action    = "sts:AssumeRole"
-      Principal = { Service = "events.amazonaws.com" }
+      Principal = { Service = "scheduler.amazonaws.com" }
     }]
   })
 }
