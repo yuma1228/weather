@@ -24,11 +24,11 @@ module "dynamodb" {
 }
 
 module "poll_weather_data" {
-  source      = "../../modules/poll_weather_data"
-  project     = var.project
-  environment = var.environment
-  s3_bucket_arn = module.s3.arn
-  dynamodb_table_arn = module.dynamodb.arn
-  s3_bucket_name = module.s3.name
+  source              = "../../modules/poll_weather_data"
+  project             = var.project
+  environment         = var.environment
+  s3_bucket_arn       = module.s3.arn
+  s3_bucket_name      = module.s3.name
+  dynamodb_table_arn  = module.dynamodb.arn
   dynamodb_table_name = module.dynamodb.name
 }

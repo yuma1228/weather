@@ -1,7 +1,7 @@
-output "table_name" {
+output "name" {
   value = aws_dynamodb_table.this.name
 }
 
-output "table_arn" {
+output "arn" {
   value = aws_dynamodb_table.this.arn
 }

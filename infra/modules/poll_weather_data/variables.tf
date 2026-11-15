@@ -46,19 +46,19 @@ variable "reserved_concurrent_executions" {
 }
 
 variable "s3_bucket_arn" {
-  type        = string
+  type = string
 }
 
 variable "s3_bucket_name" {
-  type        = string
+  type = string
 }
 
 variable "dynamodb_table_arn" {
-  type        = string
+  type = string
 }
 
 variable "dynamodb_table_name" {
-  type        = string
+  type = string
 }
 
 variable "log_retention_days" {
@@ -72,3 +72,7 @@ variable "schedule_expression" {
   description = "10 minutes ごとに実行"
 }
 
+variable "ttl_days" {
+  type        = number
+  default     = 7
+}

@@ -38,6 +38,7 @@ resource "aws_lambda_function" "lambda" {
     variables = {
       S3_BUCKET_NAME      = var.s3_bucket_name
       DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      TTL_DAYS            = var.ttl_days
     }
   }
 }
