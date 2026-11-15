@@ -1,0 +1,3 @@
+# 開発・CI でのみ使う。Lambda の zip には含まれない
+pytest
+boto3
