@@ -58,12 +58,12 @@ resource "aws_iam_role_policy" "lambda_data_access" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:GetObject"]
+        Action   = ["s3:PutObject"]
         Resource = "${var.s3_bucket_arn}/*"
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:BatchWriteItem", "dynamodb:GetItem", "dynamodb:Query"]
+        Action   = ["dynamodb:BatchWriteItem"]
         Resource = var.dynamodb_table_arn
       },
     ]
