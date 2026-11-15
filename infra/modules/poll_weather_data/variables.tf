@@ -73,6 +73,6 @@ variable "schedule_expression" {
 }
 
 variable "ttl_days" {
-  type        = number
-  default     = 7
+  type    = number
+  default = 7
 }
