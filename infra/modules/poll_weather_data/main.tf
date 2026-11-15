@@ -61,7 +61,6 @@ resource "aws_iam_role_policy" "lambda_data_access" {
         Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = "${var.s3_bucket_arn}/*"
       },
-      # batch_writer() が呼ぶのは BatchWriteItem。PutItem の許可では通らない
       {
         Effect   = "Allow"
         Action   = ["dynamodb:BatchWriteItem", "dynamodb:GetItem", "dynamodb:Query"]
