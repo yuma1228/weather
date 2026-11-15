@@ -1,0 +1,284 @@
+{
+  "11001": {
+    "temp": [
+      4.3,
+      0
+    ],
+    "humidity": [
+      75,
+      0
+    ],
+    "snow1h": [
+      0,
+      null
+    ],
+    "snow6h": [
+      0,
+      null
+    ],
+    "snow12h": [
+      0,
+      null
+    ],
+    "snow24h": [
+      0,
+      null
+    ],
+    "sun10m": [
+      0,
+      0
+    ],
+    "sun1h": [
+      0.0,
+      0
+    ],
+    "precipitation10m": [
+      0.0,
+      0
+    ],
+    "precipitation1h": [
+      0.0,
+      0
+    ],
+    "precipitation3h": [
+      0.0,
+      0
+    ],
+    "precipitation24h": [
+      0.0,
+      0
+    ],
+    "windDirection": [
+      4,
+      0
+    ],
+    "wind": [
+      8.3,
+      0
+    ]
+  },
+  "12066": {
+    "snow1h": [
+      0,
+      null
+    ],
+    "snow6h": [
+      0,
+      null
+    ],
+    "snow12h": [
+      0,
+      null
+    ],
+    "snow24h": [
+      0,
+      null
+    ],
+    "precipitation10m": [
+      0.0,
+      0
+    ],
+    "precipitation1h": [
+      0.0,
+      0
+    ],
+    "precipitation3h": [
+      0.0,
+      0
+    ],
+    "precipitation24h": [
+      0.0,
+      0
+    ]
+  },
+  "74447": {
+    "pressure": [
+      1008.6,
+      0
+    ],
+    "normalPressure": [
+      1011.3,
+      0
+    ],
+    "temp": [
+      15.8,
+      0
+    ],
+    "humidity": [
+      100,
+      1
+    ],
+    "visibility": [
+      20000.0,
+      0
+    ],
+    "weather": [
+      0,
+      0
+    ],
+    "snow1h": [
+      0,
+      null
+    ],
+    "snow6h": [
+      0,
+      null
+    ],
+    "snow12h": [
+      0,
+      null
+    ],
+    "snow24h": [
+      0,
+      null
+    ],
+    "sun10m": [
+      0,
+      0
+    ],
+    "sun1h": [
+      0.0,
+      0
+    ],
+    "precipitation10m": [
+      0.0,
+      0
+    ],
+    "precipitation1h": [
+      0.0,
+      0
+    ],
+    "precipitation3h": [
+      0.0,
+      0
+    ],
+    "precipitation24h": [
+      22.0,
+      0
+    ],
+    "windDirection": [
+      11,
+      0
+    ],
+    "wind": [
+      0.7,
+      0
+    ]
+  },
+  "22391": {
+    "temp": [
+      4.7,
+      0
+    ],
+    "humidity": [
+      92,
+      0
+    ],
+    "snow1h": [
+      0,
+      null
+    ],
+    "snow6h": [
+      0,
+      null
+    ],
+    "snow12h": [
+      0,
+      null
+    ],
+    "snow24h": [
+      0,
+      null
+    ],
+    "sun10m": [
+      0,
+      0
+    ],
+    "sun1h": [
+      0.0,
+      0
+    ],
+    "precipitation10m": [
+      0.0,
+      0
+    ],
+    "precipitation1h": [
+      0.5,
+      0
+    ],
+    "precipitation3h": [
+      1.5,
+      0
+    ],
+    "precipitation24h": [
+      2.5,
+      0
+    ],
+    "windDirection": [
+      null,
+      6
+    ],
+    "wind": [
+      null,
+      6
+    ]
+  },
+  "94001": {
+    "temp": [
+      null,
+      6
+    ],
+    "humidity": [
+      null,
+      6
+    ],
+    "snow1h": [
+      0,
+      null
+    ],
+    "snow6h": [
+      0,
+      null
+    ],
+    "snow12h": [
+      0,
+      null
+    ],
+    "snow24h": [
+      0,
+      null
+    ],
+    "sun10m": [
+      0,
+      0
+    ],
+    "sun1h": [
+      0.0,
+      0
+    ],
+    "precipitation10m": [
+      0.0,
+      0
+    ],
+    "precipitation1h": [
+      0.0,
+      0
+    ],
+    "precipitation3h": [
+      0.0,
+      0
+    ],
+    "precipitation24h": [
+      51.0,
+      0
+    ],
+    "windDirection": [
+      1,
+      0
+    ],
+    "wind": [
+      4.1,
+      0
+    ]
+  }
+}

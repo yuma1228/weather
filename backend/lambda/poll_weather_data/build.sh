@@ -11,6 +11,8 @@ if (( ${#py_files[@]} == 0 )); then
 fi
 
 for src in "${py_files[@]}"; do
+  # テストは Lambda に不要なので zip を作らない
+  [[ "$src" == *_test.py ]] && continue
   out="${src%.py}.zip"
   python3 -c '
 import sys

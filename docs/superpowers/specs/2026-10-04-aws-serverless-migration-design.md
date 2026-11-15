@@ -500,7 +500,7 @@ def handler(event, context):
 4. 地点ID × 時間帯の辞書に展開
 ```
 
-**既存の `predict()` は残す。** `test_feature_order.py`（13節）が両経路で同じ特徴量を作ることを検証し、バッチ化による退行を検出する。
+**既存の `predict()` は残す。** `feature_order_test.py`（13節）が両経路で同じ特徴量を作ることを検証し、バッチ化による退行を検出する。
 
 ### 7.3 地点IDの対応表
 
@@ -803,7 +803,7 @@ useEffect(() => {
 |---|---|
 | `test_normalize.py` | bosai JSON の正規化。固定サンプルを入力し、期待する `Observation` と比較 |
 | `test_station_map.py` | 対応表が1286件、obsdl ID に重複なし、双方向に解決できる |
-| `test_feature_order.py` | **最重要。** 特徴量ベクトルの順序が学習時と一致し、かつ `predict()` と `predict_all()` が同じ行を作る |
+| `feature_order_test.py` | **最重要。** 特徴量ベクトルの順序が学習時と一致し、かつ `predict()` と `predict_all()` が同じ行を作る |
 
 3つ目を最重要とする理由は、ここが壊れても**エラーが出ない**ためである。`inference.py:80` の `num_feature()` チェックは個数しか見ないため、順序が入れ替わっても通過し、モデルは動いたまま予測だけが狂う。既知の入力に対する既知の出力を固定値で assert する。
 
