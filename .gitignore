@@ -80,7 +80,6 @@ backend/ml/models/*.tmp
 backend/ml/*.log
 
 # ---- Documentation ----
-docs/*
-!docs/superpowers/
+docs/
 
 
