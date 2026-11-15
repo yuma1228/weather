@@ -17,9 +17,6 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend/lambda/poll_weather_data
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +26,6 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
 
-      - run: pip install -r ../../requirements-dev.txt
+      - run: pip install -r backend/requirements-dev.txt
 
-      - run: python -m pytest -v
+      - run: python -m pytest backend/lambda -v
